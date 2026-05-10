@@ -31,6 +31,9 @@ const logTypes: LogType[] = [
   "Record Updated",
   "Review Completed",
   "Export CSV",
+  "Export All Records",
+  "Export Session Logs",
+  "Flush Session Logs",
 ];
 
 const dateModes: LogDateMode[] = ["All Dates", "Specific Date", "Date Range"];
