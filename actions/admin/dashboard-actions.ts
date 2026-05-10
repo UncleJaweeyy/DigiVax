@@ -3,6 +3,7 @@
 import type { DashboardStat } from "@/app/types/dashboard";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
+import { mapAuditLog } from "@/lib/firebase/audit-log";
 
 interface AdminSummaryLog {
   id: string;
@@ -14,15 +15,17 @@ interface AdminSummaryLog {
 
 const usersCollection = "users";
 const recordsCollection = "vaccinationRecords";
+const auditLogsCollection = "auditLogs";
 
 export const getAdminDashboardOverview = async (
   idToken: string,
 ): Promise<{ stats: DashboardStat[]; logs: AdminSummaryLog[] }> => {
   await assertAdmin(idToken);
 
-  const [usersSnapshot, recordsSnapshot] = await Promise.all([
+  const [usersSnapshot, recordsSnapshot, auditSnapshot] = await Promise.all([
     adminDb.collection(usersCollection).get(),
     adminDb.collection(recordsCollection).orderBy("createdAt", "desc").limit(100).get(),
+    adminDb.collection(auditLogsCollection).orderBy("createdAt", "desc").limit(5).get(),
   ]);
 
   const users = usersSnapshot.docs.map((doc) => doc.data());
@@ -56,13 +59,25 @@ export const getAdminDashboardOverview = async (
         desc: "Uploaded scan files",
       },
     ],
-    logs: records.slice(0, 5).map((record) => ({
-      id: record.id,
-      primary: getString(record.data.createdByName, "Staff"),
-      secondary: `Digitized ${getString(record.data.patientName, "record")}`,
-      status: record.data.status === "Completed" ? "success" : "warning",
-      time: formatDateTime(record.data.createdAt),
-    })),
+    logs: auditSnapshot.docs.length > 0
+      ? auditSnapshot.docs.map((doc) => {
+          const log = mapAuditLog(doc.id, doc.data());
+
+          return {
+            id: log.id,
+            primary: log.user,
+            secondary: log.action,
+            status: log.status,
+            time: log.timestamp,
+          };
+        })
+      : records.slice(0, 5).map((record) => ({
+          id: record.id,
+          primary: getString(record.data.createdByName, "Staff"),
+          secondary: `Digitized ${getString(record.data.patientName, "record")}`,
+          status: record.data.status === "Completed" ? "success" : "warning",
+          time: formatDateTime(record.data.createdAt),
+        })),
   };
 };
 

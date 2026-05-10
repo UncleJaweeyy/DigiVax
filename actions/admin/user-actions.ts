@@ -4,6 +4,7 @@ import { FieldValue, type DocumentData } from "firebase-admin/firestore";
 
 import type { StaffMember, UserRole, UserStatus } from "@/app/types/user";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { writeAuditLog } from "@/lib/firebase/audit-log";
 
 type CreateStaffAccountInput = Pick<StaffMember, "name" | "email" | "role"> & {
   password: string;
@@ -63,6 +64,20 @@ export const updateUserStatus = async (
     updatedAt: FieldValue.serverTimestamp(),
   });
 
+  const [adminProfile, targetProfile] = await Promise.all([
+    getStaffProfile(adminUid),
+    getStaffProfile(userId),
+  ]);
+
+  await writeAuditLog({
+    userId: adminUid,
+    user: adminProfile.name,
+    action: "User Status Update",
+    target: `${targetProfile.name} set to ${status}`,
+    targetId: userId,
+    status: status === "Active" ? "success" : "warning",
+  });
+
   return { success: true };
 };
 
@@ -70,7 +85,7 @@ export const createStaffAccount = async (
   idToken: string,
   userData: CreateStaffAccountInput,
 ) => {
-  await assertAdmin(idToken);
+  const adminUid = await assertAdmin(idToken);
 
   const name = userData.name.trim();
   const email = userData.email.trim().toLowerCase();
@@ -113,6 +128,16 @@ export const createStaffAccount = async (
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+    const adminProfile = await getStaffProfile(adminUid);
+
+    await writeAuditLog({
+      userId: adminUid,
+      user: adminProfile.name,
+      action: "Create User",
+      target: `${newUser.name} (${newUser.role})`,
+      targetId: authUser.uid,
+      status: "success",
+    });
   } catch (error) {
     await adminAuth.deleteUser(authUser.uid).catch(() => undefined);
     throw error;
@@ -122,7 +147,7 @@ export const createStaffAccount = async (
 };
 
 export const resetUserPassword = async (idToken: string, userId: string) => {
-  await assertAdmin(idToken);
+  const adminUid = await assertAdmin(idToken);
 
   const userSnapshot = await adminDb.collection(usersCollection).doc(userId).get();
 
@@ -145,6 +170,17 @@ export const resetUserPassword = async (idToken: string, userId: string) => {
   await userSnapshot.ref.update({
     forcePasswordChange: true,
     updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  const adminProfile = await getStaffProfile(adminUid);
+
+  await writeAuditLog({
+    userId: adminUid,
+    user: adminProfile.name,
+    action: "Password Reset",
+    target: profile.name,
+    targetId: userId,
+    status: "warning",
   });
 
   return {
@@ -197,4 +233,13 @@ function isUserStatus(status: string): status is UserStatus {
 
 function isAuthUserNotFound(error: unknown) {
   return (error as { code?: string }).code === "auth/user-not-found";
+}
+
+async function getStaffProfile(userId: string) {
+  const snapshot = await adminDb.collection(usersCollection).doc(userId).get();
+  const data = snapshot.data() || {};
+
+  return {
+    name: String(data.name || data.email || "Staff"),
+  };
 }

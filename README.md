@@ -85,6 +85,10 @@ Firebase App Hosting provides the server credentials needed by the Admin SDK. Fo
 
 The BHW dashboard, Admin dashboard, Manage Staff page, Search page, and System Logs page now read from Firebase instead of static seed data. Dashboard counts come from Firestore `vaccinationRecords` and `users`; recent activity/log views are generated from saved vaccination records. The only remaining mock data is the optional OCR text fallback used when `OCR_USE_MOCK=true`.
 
+## Audit Logs
+
+Administrative and staff actions are written to Firestore `auditLogs` through protected server routes/actions. Logged events include successful logins, first-login password changes, staff creation, staff status changes, password resets, record digitization, record updates, and review completion. The Admin dashboard and System Logs page read from `auditLogs`, with vaccination-record activity used only as a fallback when no audit log documents exist yet.
+
 ## Firestore Data Model
 
 Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:

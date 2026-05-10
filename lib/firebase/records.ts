@@ -19,6 +19,7 @@ import type {
   VaccinationRecordStatus,
 } from "@/app/types/records";
 import { auth, db } from "@/lib/firebase/client";
+import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { getUserProfile } from "@/lib/firebase/users";
 import { parseVaccinationText } from "@/lib/records/parser";
 
@@ -58,6 +59,13 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
     createdByName: profile.name || profile.email,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+  });
+
+  await writeClientAuditLog({
+    action: "Digitalized Record",
+    target: parsed.patientName,
+    targetId: docRef.id,
+    status: "success",
   });
 
   return docRef.id;
@@ -127,6 +135,13 @@ export async function updateVaccinationRecord(
     status: updates.status || "Pending Review",
     searchKeywords: parsed.searchKeywords,
     updatedAt: serverTimestamp(),
+  });
+
+  await writeClientAuditLog({
+    action: updates.status === "Completed" ? "Review Completed" : "Record Updated",
+    target: parsed.patientName,
+    targetId: recordId,
+    status: updates.status === "Completed" ? "success" : "warning",
   });
 }
 

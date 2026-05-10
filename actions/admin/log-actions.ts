@@ -1,33 +1,33 @@
 "use server";
 
 import type { SystemLog } from "@/app/types/log";
+import type { DocumentData } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
+import { mapAuditLog } from "@/lib/firebase/audit-log";
 
+const auditLogsCollection = "auditLogs";
 const recordsCollection = "vaccinationRecords";
 
 export async function getSystemLogs(idToken: string, query: string): Promise<SystemLog[]> {
   await assertAdmin(idToken);
 
-  const snapshot = await adminDb
-    .collection(recordsCollection)
-    .orderBy("createdAt", "desc")
-    .limit(100)
-    .get();
+  const [auditSnapshot, recordSnapshot] = await Promise.all([
+    adminDb
+      .collection(auditLogsCollection)
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get(),
+    adminDb
+      .collection(recordsCollection)
+      .orderBy("createdAt", "desc")
+      .limit(25)
+      .get(),
+  ]);
 
-  const logs = snapshot.docs.map((doc) => {
-    const data = doc.data();
-    const patientName = getString(data.patientName, "Unknown Patient");
-
-    return {
-      id: `REC-${doc.id}`,
-      user: getString(data.createdByName, "Staff"),
-      action: data.status === "Completed" ? "Review Completed" : "Digitalized Record",
-      target: patientName,
-      timestamp: formatDateTime(data.createdAt),
-      status: data.status === "Completed" ? "success" : "warning",
-    } satisfies SystemLog;
-  });
+  const auditLogs = auditSnapshot.docs.map((doc) => mapAuditLog(doc.id, doc.data()));
+  const recordLogs = recordSnapshot.docs.map((doc) => mapRecordLog(doc.id, doc.data()));
+  const logs = auditLogs.length > 0 ? auditLogs : recordLogs;
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -41,6 +41,19 @@ export async function getSystemLogs(idToken: string, query: string): Promise<Sys
       .toLowerCase()
       .includes(normalizedQuery),
   );
+}
+
+function mapRecordLog(id: string, data: DocumentData): SystemLog {
+  const patientName = getString(data.patientName, "Unknown Patient");
+
+  return {
+    id: `REC-${id}`,
+    user: getString(data.createdByName, "Staff"),
+    action: data.status === "Completed" ? "Review Completed" : "Digitalized Record",
+    target: patientName,
+    timestamp: formatDateTime(data.createdAt),
+    status: data.status === "Completed" ? "success" : "warning",
+  };
 }
 
 function getString(value: unknown, fallback = "") {

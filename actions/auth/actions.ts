@@ -7,6 +7,7 @@ import {
 } from "firebase/auth";
 
 import { auth } from "@/lib/firebase/client";
+import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { getUserProfile, updateUserPasswordState } from "@/lib/firebase/users";
 
 export const loginUser = async (email: string, password: string) => {
@@ -23,6 +24,12 @@ export const loginUser = async (email: string, password: string) => {
       await signOut(auth);
       throw new Error("Access Denied: This account is not active.");
     }
+
+    await writeClientAuditLog({
+      action: "User Login",
+      target: "System Access",
+      status: "success",
+    });
 
     return profile;
   } catch (error: unknown) {
@@ -46,6 +53,11 @@ export const updatePassword = async (
     await reauthenticateWithCredential(user, credential);
     await updateFirebasePassword(user, newPassword);
     await updateUserPasswordState(user.uid);
+    await writeClientAuditLog({
+      action: "Password Change",
+      target: user.email || "Current User",
+      status: "warning",
+    });
 
     return {
       success: true,
