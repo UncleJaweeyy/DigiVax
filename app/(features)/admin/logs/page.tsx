@@ -5,6 +5,7 @@ import { History, ShieldCheck, AlertCircle, XCircle, Loader2, ChevronLeft, Chevr
 import Button from "@/components/ui/Button";
 import { getSystemLogs } from "@/actions/admin/log-actions";
 import { SystemLog } from "@/app/types/log";
+import { auth } from "@/lib/firebase/client";
 
 export default function LogsPage() {
   const [query, setQuery] = useState("");
@@ -18,7 +19,8 @@ export default function LogsPage() {
     const delayDebounce = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const data = await getSystemLogs(query);
+        const idToken = await getIdToken();
+        const data = await getSystemLogs(idToken, query);
         setLogs(data);
         setCurrentPage(1);
       } catch (err) {
@@ -144,4 +146,14 @@ export default function LogsPage() {
       </div>
     </div>
   );
+}
+
+async function getIdToken() {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("Please sign in again.");
+  }
+
+  return currentUser.getIdToken();
 }

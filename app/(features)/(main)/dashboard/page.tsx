@@ -9,6 +9,7 @@ import { ActivityTable } from "@/components/dashboard/RecentTable";
 import { getBHWDashboardOverview } from "@/actions/bhw/dashboard-actions";
 import type { DashboardStat } from "@/app/types/dashboard";
 import type { VaccinationRecord } from "@/app/types/records";
+import { auth } from "@/lib/firebase/client";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStat[]>([]);
@@ -19,7 +20,8 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        const data = await getBHWDashboardOverview();
+        const idToken = await getIdToken();
+        const data = await getBHWDashboardOverview(idToken);
         setStats(data.stats);
         setRecords(data.records);
       } catch (error) {
@@ -86,4 +88,14 @@ export default function DashboardPage() {
       />
     </div>
   );
+}
+
+async function getIdToken() {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("Please sign in again.");
+  }
+
+  return currentUser.getIdToken();
 }

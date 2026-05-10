@@ -1,26 +1,70 @@
 "use server";
 
-import { MOCK_LOGS } from "@/lib/dummy-data";
-import { SystemLog } from "@/app/types/log";
+import type { SystemLog } from "@/app/types/log";
+import { adminDb } from "@/lib/firebase/admin";
+import { assertAdmin } from "@/lib/firebase/admin-access";
 
-export async function getSystemLogs(query: string): Promise<SystemLog[]> {
-  // Simulate network delay for backend-readiness
-  await new Promise((resolve) => setTimeout(resolve, 500));
+const recordsCollection = "vaccinationRecords";
 
-  try {
-    // If no query, return the full list from dummy-data.ts
-    if (!query) return MOCK_LOGS;
+export async function getSystemLogs(idToken: string, query: string): Promise<SystemLog[]> {
+  await assertAdmin(idToken);
 
-    const lowerQuery = query.toLowerCase();
-    
-    // Filter logic structured for future Database migration
-    return MOCK_LOGS.filter((log) => 
-      log.user.toLowerCase().includes(lowerQuery) || 
-      log.action.toLowerCase().includes(lowerQuery) ||
-      log.target.toLowerCase().includes(lowerQuery)
-    );
-  } catch (error) {
-    console.error("Log Fetch Error:", error);
-    throw new Error("Failed to fetch system logs.");
+  const snapshot = await adminDb
+    .collection(recordsCollection)
+    .orderBy("createdAt", "desc")
+    .limit(100)
+    .get();
+
+  const logs = snapshot.docs.map((doc) => {
+    const data = doc.data();
+    const patientName = getString(data.patientName, "Unknown Patient");
+
+    return {
+      id: `REC-${doc.id}`,
+      user: getString(data.createdByName, "Staff"),
+      action: data.status === "Completed" ? "Review Completed" : "Digitalized Record",
+      target: patientName,
+      timestamp: formatDate(data.createdAt),
+      status: data.status === "Completed" ? "success" : "warning",
+    } satisfies SystemLog;
+  });
+
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return logs;
   }
+
+  return logs.filter((log) =>
+    [log.user, log.action, log.target, log.timestamp]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedQuery),
+  );
+}
+
+function getString(value: unknown, fallback = "") {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function formatDate(value: unknown) {
+  const date = toDate(value);
+
+  if (!date) {
+    return "No date";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function toDate(value: unknown) {
+  if (value && typeof (value as { toDate?: unknown }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate();
+  }
+
+  return null;
 }

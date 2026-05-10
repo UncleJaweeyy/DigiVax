@@ -6,6 +6,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityTable } from "@/components/dashboard/RecentTable";
 import { getAdminDashboardOverview, triggerMaintenanceAction } from "@/actions/admin/dashboard-actions";
 import type { DashboardStat } from "@/app/types/dashboard";
+import { auth } from "@/lib/firebase/client";
 
 interface AdminSummaryLog {
   id: string;
@@ -24,7 +25,8 @@ export default function AdminDashboard() {
     const fetchAdminData = async () => {
       setIsLoading(true);
       try {
-        const data = await getAdminDashboardOverview();
+        const idToken = await getIdToken();
+        const data = await getAdminDashboardOverview(idToken);
         setStats(data.stats);
         setLogs(data.logs);
       } catch (error) {
@@ -47,7 +49,8 @@ export default function AdminDashboard() {
 
   const handleAction = async (actionType: string) => {
     try {
-      await triggerMaintenanceAction(actionType);
+      const idToken = await getIdToken();
+      await triggerMaintenanceAction(idToken, actionType);
       alert(`${actionType} initiated successfully.`);
     } catch {
       alert("Action failed.");
@@ -108,4 +111,14 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+}
+
+async function getIdToken() {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("Please sign in again.");
+  }
+
+  return currentUser.getIdToken();
 }

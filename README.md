@@ -81,6 +81,10 @@ Supported admin operations:
 
 Firebase App Hosting provides the server credentials needed by the Admin SDK. For local development outside App Hosting, use Application Default Credentials or set `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY` in your local environment.
 
+## Live Data Surfaces
+
+The BHW dashboard, Admin dashboard, Manage Staff page, Search page, and System Logs page now read from Firebase instead of static seed data. Dashboard counts come from Firestore `vaccinationRecords` and `users`; recent activity/log views are generated from saved vaccination records. The only remaining mock data is the optional OCR text fallback used when `OCR_USE_MOCK=true`.
+
 ## Firestore Data Model
 
 Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:
