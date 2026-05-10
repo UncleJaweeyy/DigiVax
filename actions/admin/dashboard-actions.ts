@@ -61,7 +61,7 @@ export const getAdminDashboardOverview = async (
       primary: getString(record.data.createdByName, "Staff"),
       secondary: `Digitized ${getString(record.data.patientName, "record")}`,
       status: record.data.status === "Completed" ? "success" : "warning",
-      time: formatDate(record.data.createdAt),
+      time: formatDateTime(record.data.createdAt),
     })),
   };
 };
@@ -77,7 +77,7 @@ function getString(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function formatDate(value: unknown) {
+function formatDateTime(value: unknown) {
   const date = toDate(value);
 
   if (!date) {
@@ -88,6 +88,8 @@ function formatDate(value: unknown) {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(date);
 }
 

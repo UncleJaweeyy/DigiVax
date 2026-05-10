@@ -25,7 +25,7 @@ export const getBHWDashboardOverview = async (
       id: doc.id,
       patientName: getString(data.patientName, "Unknown Patient"),
       vaccineType: getString(data.vaccineType, "Unspecified Vaccine"),
-      timestamp: getString(data.vaccinationDate) || formatDate(data.createdAt),
+      timestamp: formatDateTime(data.createdAt),
       status: data.status === "Completed" ? "Completed" : "Pending Review",
     } satisfies VaccinationRecord;
   });
@@ -67,7 +67,7 @@ function getString(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function formatDate(value: unknown) {
+function formatDateTime(value: unknown) {
   const date = toDate(value);
 
   if (!date) {
@@ -78,6 +78,8 @@ function formatDate(value: unknown) {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(date);
 }
 

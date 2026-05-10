@@ -24,7 +24,7 @@ export async function getSystemLogs(idToken: string, query: string): Promise<Sys
       user: getString(data.createdByName, "Staff"),
       action: data.status === "Completed" ? "Review Completed" : "Digitalized Record",
       target: patientName,
-      timestamp: formatDate(data.createdAt),
+      timestamp: formatDateTime(data.createdAt),
       status: data.status === "Completed" ? "success" : "warning",
     } satisfies SystemLog;
   });
@@ -47,7 +47,7 @@ function getString(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function formatDate(value: unknown) {
+function formatDateTime(value: unknown) {
   const date = toDate(value);
 
   if (!date) {
@@ -58,6 +58,8 @@ function formatDate(value: unknown) {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(date);
 }
 

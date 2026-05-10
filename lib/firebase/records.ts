@@ -137,7 +137,7 @@ function mapRecord(id: string, data: Record<string, unknown>): VaccinationRecord
     id: document.id,
     patientName: document.patientName,
     vaccineType: document.vaccineType,
-    timestamp: document.vaccinationDate || formatTimestamp(document.createdAt || null),
+    timestamp: formatTimestamp(document.createdAt || null),
     status: document.status,
   };
 }
@@ -184,5 +184,7 @@ function formatTimestamp(date: Date | null) {
     year: "numeric",
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(date);
 }
