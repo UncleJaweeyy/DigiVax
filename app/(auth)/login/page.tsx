@@ -1,14 +1,16 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Lock, Mail, Activity, ShieldAlert, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
 import { loginUser, updatePassword } from "@/actions/auth/actions"
 //  Import reusable Button
 import Button from "@/components/ui/Button"
+import { useAuth } from "@/components/auth/AuthProvider"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { user, profile, loading, refreshProfile } = useAuth()
   
   const [step, setStep] = useState<"login" | "force-change">("login")
   const [isLoading, setIsLoading] = useState(false)
@@ -21,6 +23,12 @@ export default function LoginPage() {
   
   const [tempUserData, setTempUserData] = useState<{ role: string } | null>(null)
 
+  useEffect(() => {
+    if (!loading && user && profile && !profile.forcePasswordChange) {
+      router.replace(profile.role === "admin" ? "/admin/dashboard" : "/dashboard")
+    }
+  }, [loading, profile, router, user])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -32,12 +40,11 @@ export default function LoginPage() {
       if (user.forcePasswordChange) {
         setStep("force-change");
       } else {
-        localStorage.setItem("auth", "true");
-        localStorage.setItem("role", user.role);
+        await refreshProfile();
         router.push(user.role === "admin" ? "/admin/dashboard" : "/dashboard");
       }
-    } catch (error: any) {
-      alert(error.message || "An error occurred during login.");
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, "An error occurred during login."));
     } finally {
       setIsLoading(false);
     }
@@ -53,13 +60,12 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await updatePassword(email, newPassword);
+      await refreshProfile();
       alert("Success! Password updated securely.");
       const finalRole = tempUserData?.role || "bhw";
-      localStorage.setItem("auth", "true");
-      localStorage.setItem("role", finalRole);
       router.push(finalRole === "admin" ? "/admin/dashboard" : "/dashboard");
-    } catch (error: any) {
-      alert(error.message || "Failed to update password.");
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, "Failed to update password."));
     } finally {
       setIsLoading(false);
     }
@@ -185,4 +191,8 @@ export default function LoginPage() {
       </div>
     </div>
   )
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }

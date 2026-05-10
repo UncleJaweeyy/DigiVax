@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -12,15 +12,19 @@ import {
   LogOut,
   Activity
 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+
+interface SidebarLinkProps {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Access localStorage only after component mounts on client
-    setRole(localStorage.getItem("role"));
-  }, []);
+  const { profile, signOutUser } = useAuth();
+  const role = profile?.role;
 
   const isActive = (path: string) => pathname === path;
 
@@ -85,8 +89,8 @@ export default function Sidebar() {
 
       {/* Logout Area */}
       <button 
-        onClick={() => {
-          localStorage.clear();
+        onClick={async () => {
+          await signOutUser();
           window.location.href = "/login";
         }}
         className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 transition-colors mt-auto group"
@@ -98,7 +102,7 @@ export default function Sidebar() {
   );
 }
 
-function SidebarLink({ href, icon, label, active }: any) {
+function SidebarLink({ href, icon, label, active }: SidebarLinkProps) {
   return (
     <Link
       href={href}

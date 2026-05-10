@@ -45,3 +45,25 @@ For local source deployments with the Firebase CLI:
 ```bash
 firebase deploy --only apphosting:digivax
 ```
+
+## Firebase Auth Setup
+
+DigiVax uses Firebase Email/Password Auth for sign-in and Firestore user profile documents for app-specific access control.
+
+Enable **Authentication > Sign-in method > Email/Password** in the Firebase console, then create staff users in **Authentication > Users**. For each Auth user, create a Firestore document at `users/{uid}`:
+
+```json
+{
+  "uid": "AUTH_USER_UID",
+  "name": "Staff Name",
+  "email": "staff@example.com",
+  "role": "admin",
+  "status": "Active",
+  "forcePasswordChange": true,
+  "joined": "2026-05-10"
+}
+```
+
+Valid roles are `admin` and `bhw`. Valid statuses are `Active`, `Pending`, and `Disabled`. Set `forcePasswordChange` to `true` for temporary passwords.
+
+The local Firebase client config lives in `.env.local` and the same public values are included in `apphosting.yaml` for App Hosting builds. When handing this project off, use `.env.example` as the checklist for local setup.

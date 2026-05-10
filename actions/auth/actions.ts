@@ -1,73 +1,68 @@
-// src/actions/auth/action.ts
-import { STAFF_MEMBERS } from "@/lib/dummy-data";
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  updatePassword as updateFirebasePassword,
+} from "firebase/auth";
 
-//Handle User Login
+import { auth } from "@/lib/firebase/client";
+import { getUserProfile, updateUserPasswordState } from "@/lib/firebase/users";
+
 export const loginUser = async (email: string, password: string) => {
-  // Simulate network delay for frontend feel
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  try {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    const profile = await getUserProfile(credential.user.uid);
 
-    // BACKEND INTEGRATION POINT: POST LOGIN
-    // Uncomment or change the logic below to integrate with backend API.
-     /*
-     const response = await fetch("https://api.digivax.ph/v1/auth/login", {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ email, password }),
-     });
-     
-     const data = await response.json();
-     
-     if (!response.ok) {
-       throw new Error(data.message || "Invalid credentials");
-     }
-     
-     return data.user; 
-    */
+    if (!profile) {
+      await signOut(auth);
+      throw new Error("This Firebase user has no DigiVax staff profile yet.");
+    }
 
-  // SIMULATED LOGIC (CURRENT)
-  const user = STAFF_MEMBERS.find(u => u.email === email && password === "1234");
+    if (profile.status === "Disabled") {
+      await signOut(auth);
+      throw new Error("Access Denied: This account is disabled.");
+    }
 
-  if (!user) {
-    throw new Error("Invalid credentials. Use '1234' for testing.");
+    return profile;
+  } catch (error: unknown) {
+    throw new Error(getAuthErrorMessage(error));
   }
-
-  if (user.status === "Disabled") {
-    throw new Error("Access Denied: This account is disabled.");
-  }
-
-  return user;
 };
 
-// Handle Password Reset / Force Change
- 
 export const updatePassword = async (email: string, newPassword: string) => {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-    
-  // BACKEND INTEGRATION: PATCH PASSWORD
-  // Uncomment or change the logic below to integrate with backend API.
-    /*
-     const response = await fetch("https://api.digivax.ph/v1/auth/reset-password", {
-       method: "PATCH",
-       headers: { 
-         "Content-Type": "application/json",
-         // "Authorization": `Bearer ${token}` // Usually required for sensitive actions
-       },
-       body: JSON.stringify({ email, newPassword, forcePasswordChange: false }) // Adjust payload as needed,
-     });
+  const user = auth.currentUser;
 
-     if (!response.ok) {
-       const data = await response.json();
-       throw new Error(data.message || "Failed to update password");
-     }
+  if (!user || user.email !== email) {
+    throw new Error("Please sign in again before changing your password.");
+  }
 
-     return await response.json();
-    */
+  try {
+    await updateFirebasePassword(user, newPassword);
+    await updateUserPasswordState(user.uid);
 
-  // SIMULATED LOGIC (CURRENT)
-  console.log(`Simulated password update for: ${email}. forcePasswordChange set to false.`);
-  return { 
-    success: true,
-    message: "Password updated successfully." 
-  };
+    return {
+      success: true,
+      message: "Password updated successfully.",
+    };
+  } catch (error: unknown) {
+    throw new Error(getAuthErrorMessage(error));
+  }
 };
+
+function getAuthErrorMessage(error: unknown) {
+  const authError = error as { code?: string; message?: string };
+
+  switch (authError.code) {
+    case "auth/invalid-credential":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "Invalid email or password.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again later.";
+    case "auth/weak-password":
+      return "Password should be at least 6 characters.";
+    case "auth/requires-recent-login":
+      return "Please sign in again before changing your password.";
+    default:
+      return authError.message || "Authentication failed.";
+  }
+}
