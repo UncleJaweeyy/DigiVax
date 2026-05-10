@@ -15,8 +15,28 @@ export const getStaffDirectory = async (idToken: string): Promise<StaffMember[]>
   await assertAdmin(idToken);
 
   const snapshot = await adminDb.collection(usersCollection).orderBy("name", "asc").get();
+  const staff = await Promise.all(
+    snapshot.docs.map(async (doc) => {
+      try {
+        const authUser = await adminAuth.getUser(doc.id);
+        const member = mapStaffMember(doc.id, doc.data());
 
-  return snapshot.docs.map((doc) => mapStaffMember(doc.id, doc.data()));
+        return {
+          ...member,
+          status: authUser.disabled ? "Disabled" : member.status,
+        };
+      } catch (error) {
+        if (isAuthUserNotFound(error)) {
+          await doc.ref.delete();
+          return null;
+        }
+
+        throw error;
+      }
+    }),
+  );
+
+  return staff.filter((member): member is StaffMember => member !== null);
 };
 
 export const updateUserStatus = async (
@@ -173,4 +193,8 @@ function isUserRole(role: string): role is UserRole {
 
 function isUserStatus(status: string): status is UserStatus {
   return status === "Active" || status === "Pending" || status === "Disabled";
+}
+
+function isAuthUserNotFound(error: unknown) {
+  return (error as { code?: string }).code === "auth/user-not-found";
 }
