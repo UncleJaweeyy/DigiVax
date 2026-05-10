@@ -2,6 +2,7 @@
 
 import type { DashboardStat } from "@/app/types/dashboard";
 import type { VaccinationRecord } from "@/app/types/records";
+import { formatAppDateTime } from "@/lib/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertActiveStaff } from "@/lib/firebase/admin-access";
 
@@ -74,13 +75,7 @@ function formatDateTime(value: unknown) {
     return "No date";
   }
 
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return formatAppDateTime(date);
 }
 
 function toDate(value: unknown) {

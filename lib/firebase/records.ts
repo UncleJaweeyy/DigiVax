@@ -18,6 +18,7 @@ import type {
   VaccinationRecordDocument,
   VaccinationRecordStatus,
 } from "@/app/types/records";
+import { formatAppDateTime } from "@/lib/date-format";
 import { auth, db } from "@/lib/firebase/client";
 import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { getUserProfile } from "@/lib/firebase/users";
@@ -195,11 +196,5 @@ function formatTimestamp(date: Date | null) {
     return "No date";
   }
 
-  return new Intl.DateTimeFormat("en", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return formatAppDateTime(date);
 }

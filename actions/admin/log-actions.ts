@@ -2,6 +2,7 @@
 
 import type { LogDateFilter, LogType, SystemLog } from "@/app/types/log";
 import type { DocumentData } from "firebase-admin/firestore";
+import { formatAppDateTime } from "@/lib/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
 import { mapAuditLog } from "@/lib/firebase/audit-log";
@@ -78,13 +79,7 @@ function formatDateTime(value: unknown) {
     return "No date";
   }
 
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return formatAppDateTime(date);
 }
 
 function toDate(value: unknown) {

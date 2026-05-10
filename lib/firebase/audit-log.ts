@@ -3,6 +3,7 @@ import "server-only";
 import { FieldValue, type DocumentData } from "firebase-admin/firestore";
 
 import type { LogStatus, SystemLog } from "@/app/types/log";
+import { formatAppDateTime } from "@/lib/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 
 export interface AuditLogInput {
@@ -54,13 +55,7 @@ function formatDateTime(value: unknown) {
     return "No date";
   }
 
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return formatAppDateTime(date);
 }
 
 function toDate(value: unknown) {
