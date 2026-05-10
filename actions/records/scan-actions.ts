@@ -9,10 +9,24 @@ export type ScanStatus = "idle" | "processing" | "done" | "error";
 export interface ScanResult {
   success: boolean;
   text?: string;
+  confidence?: number;
+  fields?: Record<string, string>;
   error?: string;
 }
 
-const USE_MOCK = true;
+interface OcrApiResponse {
+  text?: string;
+  extractedText?: string;
+  confidence?: number;
+  fields?: Record<string, string>;
+  error?: string;
+  message?: string;
+}
+
+const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+const useMockOcr = process.env.OCR_USE_MOCK === "true";
+const ocrApiUrl = process.env.OCR_API_URL;
+const ocrApiKey = process.env.OCR_API_KEY;
 
 /**
  * Main OCR processing function
@@ -23,42 +37,57 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
     
     if (!file) return { success: false, error: "No file provided." };
 
-    // SERVER-SIDE VALIDATION: Enforce file types for security
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
     if (!allowedTypes.includes(file.type)) {
-      return { success: false, error: "Unsupported file format. Please use JPG or PNG." };
+      return { success: false, error: "Unsupported file format. Please use JPG, PNG, or PDF." };
     }
 
-    if (USE_MOCK) {
+    if (!ocrApiUrl) {
+      if (!useMockOcr) {
+        return {
+          success: false,
+          error: "OCR API is not configured. Set OCR_API_URL or enable OCR_USE_MOCK=true for demos.",
+        };
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 2000));
       return { success: true, text: MOCK_EXTRACTED_TEXT };
     }
 
-    // REAL BACKEND INTEGRATION
-    /*
-    const response = await fetch("YOUR_OCR_API_ENDPOINT", {
+    const requestBody = new FormData();
+    requestBody.append("file", file, file.name);
+
+    const headers = ocrApiKey ? { Authorization: `Bearer ${ocrApiKey}` } : undefined;
+    const response = await fetch(ocrApiUrl, {
       method: "POST",
-      body: formData,
+      headers,
+      body: requestBody,
     });
-    const data = await response.json();
-    return { success: true, text: data.text };
-    */
 
-    return { success: false, error: "Backend not configured." };
-  } catch (error: any) {
-    return { success: false, error: error.message || "An unexpected error occurred." };
-  }
-}
+    const data = (await response.json().catch(() => ({}))) as OcrApiResponse;
 
-/**
- * Saves the finalized text to the database
- */
-export async function saveDigitalRecord(text: string) {
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log("Saving to DB:", text);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: "Database save failed." };
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || data.message || `OCR API failed with status ${response.status}.`,
+      };
+    }
+
+    const text = data.text || data.extractedText;
+
+    if (!text) {
+      return { success: false, error: "OCR API response did not include extracted text." };
+    }
+
+    return {
+      success: true,
+      text,
+      confidence: data.confidence,
+      fields: data.fields,
+    };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An unexpected error occurred.",
+    };
   }
 }

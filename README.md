@@ -95,3 +95,49 @@ Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:
 ```
 
 The current digitization page uploads the selected scan to Firebase Storage under `vaccination-records/{uid}/...`, then saves the reviewed OCR text and `sourceStoragePath` to Firestore.
+
+## OCR API Contract
+
+The frontend expects an OCR/ML backend endpoint configured by environment variables:
+
+```env
+OCR_API_URL=https://your-cloud-run-service/ocr
+OCR_API_KEY=
+OCR_USE_MOCK=false
+```
+
+When `OCR_API_URL` is set, the Digitize page sends the selected file to that endpoint as `multipart/form-data`:
+
+```http
+POST /ocr
+Authorization: Bearer <OCR_API_KEY, if configured>
+Content-Type: multipart/form-data
+
+file=<uploaded JPG, PNG, or PDF>
+```
+
+The OCR backend should return JSON in this shape:
+
+```json
+{
+  "text": "Full extracted OCR text",
+  "confidence": 0.94,
+  "fields": {
+    "patientName": "Juan Dela Cruz",
+    "vaccineType": "Pfizer",
+    "vaccinationDate": "2023-08-15"
+  }
+}
+```
+
+`text` is required. `confidence` and `fields` are optional for now. The frontend also accepts `extractedText` as an alias for `text`.
+
+If the backend fails, return a non-2xx response with:
+
+```json
+{
+  "error": "Human-readable error message"
+}
+```
+
+For local demos without an OCR backend, set `OCR_USE_MOCK=true` and leave `OCR_API_URL` empty.
