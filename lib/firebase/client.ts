@@ -12,7 +12,14 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const missingConfig = Object.entries(firebaseConfig)
+const requiredConfig = {
+  apiKey: firebaseConfig.apiKey,
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  appId: firebaseConfig.appId,
+};
+
+const missingConfig = Object.entries(requiredConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
