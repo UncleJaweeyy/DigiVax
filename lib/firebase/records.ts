@@ -1,17 +1,22 @@
 import {
   addDoc,
   collection,
+  doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
   query,
   serverTimestamp,
   Timestamp,
+  updateDoc,
 } from "firebase/firestore";
 
 import type {
   NewVaccinationRecordInput,
   VaccinationRecord,
+  VaccinationRecordDocument,
+  VaccinationRecordStatus,
 } from "@/app/types/records";
 import { auth, db } from "@/lib/firebase/client";
 import { getUserProfile } from "@/lib/firebase/users";
@@ -86,15 +91,83 @@ export async function getVaccinationRecords(queryText = ""): Promise<Vaccination
   });
 }
 
+export async function getVaccinationRecord(recordId: string): Promise<VaccinationRecordDocument> {
+  const snapshot = await getDoc(doc(db, recordsCollection, recordId));
+
+  if (!snapshot.exists()) {
+    throw new Error("Record not found.");
+  }
+
+  return mapRecordDocument(snapshot.id, snapshot.data());
+}
+
+export async function updateVaccinationRecord(
+  recordId: string,
+  updates: {
+    correctedText: string;
+    status?: VaccinationRecordStatus;
+  },
+) {
+  const correctedText = updates.correctedText.trim();
+
+  if (!correctedText) {
+    throw new Error("Corrected text cannot be empty.");
+  }
+
+  const parsed = parseVaccinationText(correctedText);
+
+  await updateDoc(doc(db, recordsCollection, recordId), {
+    patientName: parsed.patientName,
+    patientNameLower: parsed.patientName.toLowerCase(),
+    vaccineType: parsed.vaccineType,
+    vaccineTypeLower: parsed.vaccineType.toLowerCase(),
+    vaccinationDate: parsed.vaccinationDate,
+    recordYear: parsed.recordYear,
+    correctedText,
+    status: updates.status || "Pending Review",
+    searchKeywords: parsed.searchKeywords,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 function mapRecord(id: string, data: Record<string, unknown>): VaccinationRecord {
+  const document = mapRecordDocument(id, data);
+
+  return {
+    id: document.id,
+    patientName: document.patientName,
+    vaccineType: document.vaccineType,
+    timestamp: document.vaccinationDate || formatTimestamp(document.createdAt || null),
+    status: document.status,
+  };
+}
+
+function mapRecordDocument(id: string, data: Record<string, unknown>): VaccinationRecordDocument {
   const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null;
+  const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : null;
+  const status = data.status === "Completed" ? "Completed" : "Pending Review";
 
   return {
     id,
     patientName: getString(data.patientName, "Unknown Patient"),
+    patientNameLower: getString(data.patientNameLower),
     vaccineType: getString(data.vaccineType, "Unspecified Vaccine"),
-    timestamp: getString(data.vaccinationDate) || formatTimestamp(createdAt),
-    status: data.status === "Completed" ? "Completed" : "Pending Review",
+    vaccineTypeLower: getString(data.vaccineTypeLower),
+    vaccinationDate: getString(data.vaccinationDate),
+    recordYear: getString(data.recordYear),
+    rawText: getString(data.rawText),
+    correctedText: getString(data.correctedText),
+    status,
+    sourceFileName: getString(data.sourceFileName),
+    sourceFileType: getString(data.sourceFileType),
+    sourceStoragePath: getString(data.sourceStoragePath),
+    searchKeywords: Array.isArray(data.searchKeywords)
+      ? data.searchKeywords.filter((value): value is string => typeof value === "string")
+      : [],
+    createdBy: getString(data.createdBy),
+    createdByName: getString(data.createdByName),
+    createdAt: createdAt || undefined,
+    updatedAt: updatedAt || undefined,
   };
 }
 

@@ -96,6 +96,8 @@ Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:
 
 The current digitization page uploads the selected scan to Firebase Storage under `vaccination-records/{uid}/...`, then saves the reviewed OCR text and `sourceStoragePath` to Firestore.
 
+The Search page reads these Firestore records, opens a full record detail view, lets staff edit the corrected OCR text, refreshes parsed patient/vaccine/date fields from the corrected text, marks records as completed, exports the saved text, and opens the uploaded source file through Firebase Storage.
+
 ## OCR API Contract
 
 The frontend expects an OCR/ML backend endpoint configured by environment variables:

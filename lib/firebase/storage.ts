@@ -1,4 +1,4 @@
-import { ref, uploadBytes } from "firebase/storage";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 import { auth, storage } from "@/lib/firebase/client";
 
@@ -33,4 +33,12 @@ export async function uploadVaccinationRecordFile(file: File) {
   });
 
   return storagePath;
+}
+
+export async function getVaccinationRecordFileUrl(storagePath: string) {
+  if (!storagePath) {
+    throw new Error("This record does not have an uploaded source file.");
+  }
+
+  return getDownloadURL(ref(storage, storagePath));
 }
