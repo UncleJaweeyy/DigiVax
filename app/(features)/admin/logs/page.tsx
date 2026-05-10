@@ -1,14 +1,39 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { History, ShieldCheck, AlertCircle, XCircle, Loader2, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import {
+  History,
+  ShieldCheck,
+  AlertCircle,
+  XCircle,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ChevronDown,
+  ListFilter,
+} from "lucide-react";
 import Button from "@/components/ui/Button";
 import { getSystemLogs } from "@/actions/admin/log-actions";
-import { SystemLog } from "@/app/types/log";
+import type { LogType, SystemLog } from "@/app/types/log";
 import { auth } from "@/lib/firebase/client";
+
+const logTypes: LogType[] = [
+  "All",
+  "User Login",
+  "Password Change",
+  "Create User",
+  "User Status Update",
+  "Password Reset",
+  "Digitalized Record",
+  "Record Updated",
+  "Review Completed",
+];
 
 export default function LogsPage() {
   const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<LogType>("All");
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,7 +45,7 @@ export default function LogsPage() {
       setIsLoading(true);
       try {
         const idToken = await getIdToken();
-        const data = await getSystemLogs(idToken, query);
+        const data = await getSystemLogs(idToken, query, typeFilter);
         setLogs(data);
         setCurrentPage(1);
       } catch (err) {
@@ -31,7 +56,7 @@ export default function LogsPage() {
     }, 300);
 
     return () => clearTimeout(delayDebounce);
-  }, [query]);
+  }, [query, typeFilter]);
 
   // Pagination Logic
   const totalPages = Math.ceil(logs.length / itemsPerPage);
@@ -61,18 +86,59 @@ export default function LogsPage() {
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 flex-1 flex flex-col min-h-0">
         
-        {/* Search Bar */}
-        <div className="relative mb-8">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            {isLoading ? <Loader2 className="animate-spin text-blue-500" size={20} /> : <History className="text-slate-400" size={20} />}
+        <div className="mb-8 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_260px]">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              {isLoading ? <Loader2 className="animate-spin text-blue-500" size={20} /> : <History className="text-slate-400" size={20} />}
+            </div>
+            <input
+              type="text"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Search logs by user, action, or target..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            placeholder="Search logs by user, action, or target..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsTypeMenuOpen((value) => !value)}
+              className="flex h-full min-h-[58px] w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 text-left font-bold text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-50 focus:ring-2 focus:ring-blue-500/20"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <ListFilter size={18} className="shrink-0 text-blue-600" />
+                <span className="truncate">{typeFilter}</span>
+              </span>
+              <ChevronDown
+                size={18}
+                className={`shrink-0 text-slate-400 transition-transform ${isTypeMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {isTypeMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-full overflow-hidden rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-200/70">
+                {logTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setTypeFilter(type);
+                      setIsTypeMenuOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all ${
+                      typeFilter === type
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <ListFilter size={15} className={typeFilter === type ? "text-blue-600" : "text-slate-400"} />
+                    {type}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Table Area */}
