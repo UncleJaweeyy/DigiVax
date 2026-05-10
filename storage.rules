@@ -25,6 +25,10 @@ service firebase.storage {
         && isStaffRole(firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role);
     }
 
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
     function validRecordFile() {
       return request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType in [
@@ -36,7 +40,7 @@ service firebase.storage {
     }
 
     match /vaccination-records/{userId}/{fileName=**} {
-      allow read: if isActiveStaff();
+      allow read: if isOwner(userId) || isActiveStaff();
       allow create: if isActiveStaff()
         && request.auth.uid == userId
         && validRecordFile();
