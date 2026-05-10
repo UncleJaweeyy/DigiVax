@@ -433,7 +433,7 @@ export default function SearchPage() {
               </div>
             </div>
 
-            <div className="relative flex-1 overflow-auto bg-slate-100 p-5">
+            <div className="relative flex-1 overflow-auto bg-slate-900 p-5">
               {isPreviewRendering && <SourcePreviewSkeleton />}
 
               <div className="flex min-h-full items-center justify-center">
@@ -498,12 +498,12 @@ function RecordFact({ label, value }: { label: string; value: string }) {
 
 function SourcePreviewSkeleton() {
   return (
-    <div className="absolute inset-5 z-10 flex items-center justify-center rounded-2xl border border-slate-200 bg-white">
+    <div className="absolute inset-5 z-10 flex items-center justify-center rounded-2xl border border-white/10 bg-slate-950">
       <div className="w-full max-w-2xl space-y-4 p-8">
         <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
-        <div className="mx-auto h-4 w-44 animate-pulse rounded-full bg-slate-200" />
-        <div className="mx-auto aspect-[4/3] w-full max-w-lg animate-pulse rounded-2xl bg-slate-100" />
-        <div className="mx-auto h-3 w-64 animate-pulse rounded-full bg-slate-100" />
+        <div className="mx-auto h-4 w-44 animate-pulse rounded-full bg-slate-700" />
+        <div className="mx-auto aspect-[4/3] w-full max-w-lg animate-pulse rounded-2xl bg-slate-800" />
+        <div className="mx-auto h-3 w-64 animate-pulse rounded-full bg-slate-800" />
       </div>
     </div>
   );
