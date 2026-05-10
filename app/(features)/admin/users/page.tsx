@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { 
   Users, UserPlus, CheckCircle, XCircle, 
-  Search, ShieldCheck, User as UserIcon, X, Clock, KeyRound, Filter
+  ShieldCheck, User as UserIcon, X, Clock, KeyRound
 } from "lucide-react";
 import { StaffMember, UserStatus, UserRole } from "@/app/types/user";
 import { getStaffDirectory, updateUserStatus, createStaffAccount, resetUserPassword } from "@/actions/admin/user-actions";
@@ -14,7 +14,6 @@ export default function ManageStaffPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<UserStatus | "All">("All");
   const [roleFilter, setRoleFilter] = useState<UserRole | "All">("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -29,8 +28,8 @@ export default function ManageStaffPage() {
       try {
         const data = await getStaffDirectory();
         setStaff(data);
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
@@ -51,7 +50,7 @@ export default function ManageStaffPage() {
           `The password for ${name} has been reset to: ${result.tempPass}\n\n` +
           `Please provide this code to the user. They will be forced to change it upon login.`
         );
-      } catch (err) {
+      } catch {
         alert("Failed to reset password. Please try again.");
       }
     }
@@ -62,11 +61,10 @@ export default function ManageStaffPage() {
     return staff.filter(user => {
       const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "All" || user.status === statusFilter;
       const matchesRole = roleFilter === "All" || user.role === roleFilter;
-      return matchesSearch && matchesStatus && matchesRole;
+      return matchesSearch && matchesRole;
     });
-  }, [staff, searchQuery, statusFilter, roleFilter]);
+  }, [staff, searchQuery, roleFilter]);
 
   const paginatedStaff = filteredStaff.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -75,7 +73,7 @@ export default function ManageStaffPage() {
     try {
       await updateUserStatus(id, newStatus);
       setStaff(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
-    } catch (err) { alert("Failed to update status"); }
+    } catch { alert("Failed to update status"); }
   };
 
   const handleAddStaff = async (e: React.FormEvent) => {
@@ -87,7 +85,7 @@ export default function ManageStaffPage() {
       setStaff([response.user, ...staff]);
       setIsModalOpen(false);
       setFormData({ name: "", email: "", role: "bhw", password: "" });
-    } catch (err) { alert("Failed to create user"); }
+    } catch { alert("Failed to create user"); }
   };
 
   if (isLoading) return (
@@ -111,7 +109,7 @@ export default function ManageStaffPage() {
           <select 
             className="pl-4 pr-8 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold !text-slate-700 outline-none focus:ring-2 focus:ring-blue-600"
             value={roleFilter}
-            onChange={(e) => { setRoleFilter(e.target.value as any); setCurrentPage(1); }}
+            onChange={(e) => { setRoleFilter(e.target.value as UserRole | "All"); setCurrentPage(1); }}
           >
             <option value="All">All Roles</option>
             <option value="admin">Admins</option>

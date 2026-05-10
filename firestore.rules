@@ -20,32 +20,163 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == "Active";
     }
 
+    function hasStaffRole() {
+      return isActiveStaff()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "bhw"];
+    }
+
     function isAdmin() {
       return isActiveStaff()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
+    function validString(value) {
+      return value is string;
+    }
+
+    function validOptionalAuditValue(value) {
+      return value == null || value is string || value is timestamp;
+    }
+
+    function validUserStatus(value) {
+      return value in ["Active", "Pending", "Disabled"];
+    }
+
+    function validUserRole(value) {
+      return value in ["admin", "bhw"];
+    }
+
+    function validUserProfile(userId) {
+      return request.resource.data.keys().hasOnly([
+          "uid",
+          "name",
+          "email",
+          "role",
+          "status",
+          "forcePasswordChange",
+          "joined",
+          "updatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "uid",
+          "name",
+          "email",
+          "role",
+          "status",
+          "forcePasswordChange",
+          "joined"
+        ])
+        && request.resource.data.uid == userId
+        && validString(request.resource.data.name)
+        && validString(request.resource.data.email)
+        && validUserRole(request.resource.data.role)
+        && validUserStatus(request.resource.data.status)
+        && request.resource.data.forcePasswordChange is bool
+        && validString(request.resource.data.joined)
+        && validOptionalAuditValue(request.resource.data.updatedAt);
+    }
+
+    function validRecordStatus(value) {
+      return value in ["Pending Review", "Completed"];
+    }
+
+    function validRecordStoragePath(value) {
+      return value == ""
+        || value.matches("^vaccination-records/" + request.auth.uid + "/.+$");
+    }
+
+    function recordKeys() {
+      return [
+        "patientName",
+        "patientNameLower",
+        "vaccineType",
+        "vaccineTypeLower",
+        "vaccinationDate",
+        "recordYear",
+        "rawText",
+        "correctedText",
+        "status",
+        "sourceFileName",
+        "sourceFileType",
+        "sourceStoragePath",
+        "searchKeywords",
+        "createdBy",
+        "createdByName",
+        "createdAt",
+        "updatedAt"
+      ];
+    }
+
+    function validRecordDocument() {
+      return request.resource.data.keys().hasOnly(recordKeys())
+        && request.resource.data.keys().hasAll(recordKeys())
+        && validString(request.resource.data.patientName)
+        && validString(request.resource.data.patientNameLower)
+        && validString(request.resource.data.vaccineType)
+        && validString(request.resource.data.vaccineTypeLower)
+        && validString(request.resource.data.vaccinationDate)
+        && validString(request.resource.data.recordYear)
+        && validString(request.resource.data.rawText)
+        && request.resource.data.rawText.size() > 0
+        && validString(request.resource.data.correctedText)
+        && request.resource.data.correctedText.size() > 0
+        && validRecordStatus(request.resource.data.status)
+        && validString(request.resource.data.sourceFileName)
+        && validString(request.resource.data.sourceFileType)
+        && validString(request.resource.data.sourceStoragePath)
+        && validRecordStoragePath(request.resource.data.sourceStoragePath)
+        && request.resource.data.searchKeywords is list
+        && request.resource.data.createdBy == request.auth.uid
+        && validString(request.resource.data.createdByName)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function validRecordReviewUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "patientName",
+          "patientNameLower",
+          "vaccineType",
+          "vaccineTypeLower",
+          "vaccinationDate",
+          "recordYear",
+          "correctedText",
+          "status",
+          "searchKeywords",
+          "updatedAt"
+        ])
+        && validString(request.resource.data.patientName)
+        && validString(request.resource.data.patientNameLower)
+        && validString(request.resource.data.vaccineType)
+        && validString(request.resource.data.vaccineTypeLower)
+        && validString(request.resource.data.vaccinationDate)
+        && validString(request.resource.data.recordYear)
+        && validString(request.resource.data.correctedText)
+        && request.resource.data.correctedText.size() > 0
+        && validRecordStatus(request.resource.data.status)
+        && request.resource.data.searchKeywords is list
+        && request.resource.data.updatedAt == request.time;
+    }
+
     match /users/{userId} {
       allow read: if isSelf(userId) || isAdmin();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin()
+      allow create: if isAdmin() && validUserProfile(userId);
+      allow delete: if isAdmin() && !isSelf(userId);
+      allow update: if (isAdmin() && validUserProfile(userId))
         || (
           isSelf(userId)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(["forcePasswordChange", "updatedAt"])
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.forcePasswordChange == false
         );
     }
 
     match /vaccinationRecords/{recordId} {
-      allow read: if isActiveStaff();
-      allow create: if isActiveStaff()
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.status in ["Pending Review", "Completed"];
-      allow update: if isAdmin()
-        || (
-          isActiveStaff()
-          && resource.data.createdBy == request.auth.uid
-          && request.resource.data.createdBy == resource.data.createdBy
-        );
+      allow read: if hasStaffRole();
+      allow create: if hasStaffRole() && validRecordDocument();
+      allow update: if hasStaffRole() && validRecordReviewUpdate();
       allow delete: if isAdmin();
     }
   }

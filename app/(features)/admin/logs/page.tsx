@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, History, ShieldCheck, AlertCircle, XCircle, Loader2, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { History, ShieldCheck, AlertCircle, XCircle, Loader2, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { getSystemLogs } from "@/actions/admin/log-actions";
 import { SystemLog } from "@/app/types/log";

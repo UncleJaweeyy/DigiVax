@@ -2,6 +2,10 @@
 import { STAFF_MEMBERS } from "@/lib/dummy-data";
 import { StaffMember, UserStatus } from "@/app/types/user";
 
+type CreateStaffAccountInput = Pick<StaffMember, "name" | "email" | "role"> & {
+  password: string;
+};
+
 /**
  * FETCH ALL STAFF
  * Ready for GET /api/admin/users
@@ -40,7 +44,7 @@ export const updateUserStatus = async (userId: string, status: UserStatus) => {
  * CREATE NEW USER
  * Takes Admin-inputted password and sets the Force Change flag.
  */
-export const createStaffAccount = async (userData: any) => {
+export const createStaffAccount = async (userData: CreateStaffAccountInput) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   // The 'userData' coming from your modal contains: name, email, role, and password
@@ -84,6 +88,8 @@ export const resetUserPassword = async (userId: string) => {
   });
   if (!response.ok) throw new Error("Reset failed");
   */
+
+  console.log(`Temporary password generated for ${userId}`);
 
   return { 
     success: true, 

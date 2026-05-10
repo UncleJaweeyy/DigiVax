@@ -5,10 +5,19 @@ import { Users, UserPlus, HardDrive, ShieldCheck, Loader2 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityTable } from "@/components/dashboard/RecentTable";
 import { getAdminDashboardOverview, triggerMaintenanceAction } from "@/actions/admin/dashboard-actions";
+import type { DashboardStat } from "@/app/types/dashboard";
+
+interface AdminSummaryLog {
+  id: string;
+  primary: string;
+  secondary: string;
+  status: string;
+  time: string;
+}
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStat[]>([]);
+  const [logs, setLogs] = useState<AdminSummaryLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +49,7 @@ export default function AdminDashboard() {
     try {
       await triggerMaintenanceAction(actionType);
       alert(`${actionType} initiated successfully.`);
-    } catch (error) {
+    } catch {
       alert("Action failed.");
     }
   };

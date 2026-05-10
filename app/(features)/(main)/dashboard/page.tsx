@@ -7,10 +7,12 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityTable } from "@/components/dashboard/RecentTable"; 
 // 2. IMPORT action logic
 import { getBHWDashboardOverview } from "@/actions/bhw/dashboard-actions";
+import type { DashboardStat } from "@/app/types/dashboard";
+import type { VaccinationRecord } from "@/app/types/records";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<any[]>([]);
-  const [records, setRecords] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStat[]>([]);
+  const [records, setRecords] = useState<VaccinationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

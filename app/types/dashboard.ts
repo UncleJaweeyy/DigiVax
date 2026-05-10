@@ -3,4 +3,5 @@ export interface DashboardStat {
   value: string;
   type: string;
   desc?: string;
+  description?: string;
 }

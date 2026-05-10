@@ -25,7 +25,7 @@ export async function getVaccinationRecords(query: string): Promise<RecordType[]
         record.id.toLowerCase().includes(lowerQuery) ||
         record.vaccineType.toLowerCase().includes(lowerQuery)
     );
-  } catch (error) {
+  } catch {
     throw new Error("Could not fetch records.");
   }
 }

@@ -6,14 +6,30 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function hasProfile() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function isActiveStaff() {
+      return hasProfile()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "Active"
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "bhw"];
+    }
+
     function validRecordFile() {
-      return request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*|application/pdf');
+      return request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType in [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "application/pdf"
+        ];
     }
 
     match /vaccination-records/{userId}/{fileName=**} {
-      allow read: if signedIn();
-      allow create: if signedIn()
+      allow read: if isActiveStaff();
+      allow create: if isActiveStaff()
         && request.auth.uid == userId
         && validRecordFile();
       allow update, delete: if false;

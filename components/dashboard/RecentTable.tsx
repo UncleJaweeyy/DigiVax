@@ -3,9 +3,21 @@ import { Clock } from "lucide-react";
 
 interface ActivityTableProps {
   title: string;
-  data: any[];
+  data: ActivityItem[];
   viewAllLink: string;
   isAdmin?: boolean;
+}
+
+interface ActivityItem {
+  id: string;
+  primary?: string;
+  patientName?: string;
+  user?: string;
+  secondary?: string;
+  action?: string;
+  status?: string;
+  time?: string;
+  timestamp?: string;
 }
 
 export function ActivityTable({ title, data, viewAllLink, isAdmin }: ActivityTableProps) {
