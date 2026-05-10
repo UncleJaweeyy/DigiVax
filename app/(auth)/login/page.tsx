@@ -59,7 +59,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      await updatePassword(email, newPassword);
+      await updatePassword(email, password, newPassword);
       await refreshProfile();
       alert("Success! Password updated securely.");
       const finalRole = tempUserData?.role || "bhw";

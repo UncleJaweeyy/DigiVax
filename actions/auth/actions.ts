@@ -1,4 +1,6 @@
 import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   signInWithEmailAndPassword,
   signOut,
   updatePassword as updateFirebasePassword,
@@ -28,7 +30,11 @@ export const loginUser = async (email: string, password: string) => {
   }
 };
 
-export const updatePassword = async (email: string, newPassword: string) => {
+export const updatePassword = async (
+  email: string,
+  currentPassword: string,
+  newPassword: string,
+) => {
   const user = auth.currentUser;
 
   if (!user || user.email !== email) {
@@ -36,6 +42,8 @@ export const updatePassword = async (email: string, newPassword: string) => {
   }
 
   try {
+    const credential = EmailAuthProvider.credential(email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
     await updateFirebasePassword(user, newPassword);
     await updateUserPasswordState(user.uid);
 
