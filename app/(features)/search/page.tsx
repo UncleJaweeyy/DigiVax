@@ -1,11 +1,29 @@
 "use client";
 
 import React, { useCallback, useState, useEffect } from "react";
-import { Search, Eye, Edit, Download, ChevronLeft, ChevronRight, Loader2, X, FileText, ExternalLink, CheckCircle } from "lucide-react";
+import {
+  Search,
+  Eye,
+  Edit,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  X,
+  FileText,
+  ExternalLink,
+  CheckCircle,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+} from "lucide-react";
 import Button from "@/components/ui/Button"; 
 import type { VaccinationRecord, VaccinationRecordDocument, VaccinationRecordStatus } from "@/app/types/records";
 import { getVaccinationRecord, getVaccinationRecords, updateVaccinationRecord } from "@/lib/firebase/records";
-import { getVaccinationRecordFileUrl } from "@/lib/firebase/storage";
+import {
+  getVaccinationRecordFilePreview,
+  type VaccinationRecordFilePreview,
+} from "@/lib/firebase/storage";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -16,6 +34,9 @@ export default function SearchPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [sourcePreview, setSourcePreview] = useState<VaccinationRecordFilePreview | null>(null);
+  const [isSourceLoading, setIsSourceLoading] = useState(false);
+  const [sourceZoom, setSourceZoom] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -60,12 +81,36 @@ export default function SearchPage() {
   };
 
   const openSourceFile = async (record: VaccinationRecordDocument) => {
+    setIsSourceLoading(true);
     try {
-      const url = await getVaccinationRecordFileUrl(record.id);
-      window.open(url, "_blank", "noopener,noreferrer");
+      const preview = await getVaccinationRecordFilePreview(record.id);
+      setSourcePreview(preview);
+      setSourceZoom(1);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Unable to open source file.");
+    } finally {
+      setIsSourceLoading(false);
     }
+  };
+
+  const closeSourcePreview = () => {
+    if (sourcePreview) {
+      URL.revokeObjectURL(sourcePreview.url);
+    }
+
+    setSourcePreview(null);
+    setSourceZoom(1);
+  };
+
+  const downloadSourcePreview = () => {
+    if (!sourcePreview) {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = sourcePreview.url;
+    link.download = sourcePreview.fileName;
+    link.click();
   };
 
   const downloadTextExport = (record: VaccinationRecordDocument) => {
@@ -281,9 +326,10 @@ export default function SearchPage() {
                     variant="outline"
                     className="flex w-full items-center justify-center gap-2"
                     onClick={() => openSourceFile(selectedRecord)}
-                    disabled={!selectedRecord.sourceStoragePath}
+                    disabled={!selectedRecord.sourceStoragePath || isSourceLoading}
                   >
-                    <ExternalLink size={16} /> View Source File
+                    {isSourceLoading ? <Loader2 className="animate-spin" size={16} /> : <ExternalLink size={16} />}
+                    View Source File
                   </Button>
                   <Button
                     variant="outline"
@@ -331,6 +377,92 @@ export default function SearchPage() {
                   </pre>
                 </div>
               </section>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sourcePreview && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950/90 backdrop-blur-sm">
+          <div className="flex items-center justify-between border-b border-white/10 bg-slate-950 px-5 py-4 text-white">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold">{sourcePreview.fileName}</p>
+              <p className="text-xs text-slate-400">{Math.round(sourceZoom * 100)}%</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSourceZoom((value) => Math.max(0.5, value - 0.25))}
+                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
+                title="Zoom out"
+              >
+                <ZoomOut size={18} />
+              </button>
+              <button
+                onClick={() => setSourceZoom(1)}
+                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
+                title="Reset zoom"
+              >
+                <RotateCcw size={18} />
+              </button>
+              <button
+                onClick={() => setSourceZoom((value) => Math.min(3, value + 0.25))}
+                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
+                title="Zoom in"
+              >
+                <ZoomIn size={18} />
+              </button>
+              <button
+                onClick={downloadSourcePreview}
+                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
+                title="Download"
+              >
+                <Download size={18} />
+              </button>
+              <button
+                onClick={closeSourcePreview}
+                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-6">
+            <div className="flex min-h-full items-start justify-center">
+              {sourcePreview.contentType.startsWith("image/") ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={sourcePreview.url}
+                  alt={sourcePreview.fileName}
+                  className="max-w-none rounded-lg bg-white shadow-2xl"
+                  style={{
+                    transform: `scale(${sourceZoom})`,
+                    transformOrigin: "top center",
+                  }}
+                />
+              ) : sourcePreview.contentType === "application/pdf" ? (
+                <iframe
+                  src={sourcePreview.url}
+                  title={sourcePreview.fileName}
+                  className="h-[80vh] w-[min(1000px,90vw)] origin-top rounded-lg border-0 bg-white shadow-2xl"
+                  style={{
+                    transform: `scale(${sourceZoom})`,
+                  }}
+                />
+              ) : (
+                <div className="rounded-2xl bg-white p-8 text-center text-slate-700 shadow-2xl">
+                  <FileText className="mx-auto mb-4 text-blue-600" size={42} />
+                  <p className="font-bold">Preview is not available for this file type.</p>
+                  <button
+                    onClick={downloadSourcePreview}
+                    className="mt-5 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+                  >
+                    Download File
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

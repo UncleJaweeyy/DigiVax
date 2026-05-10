@@ -35,7 +35,15 @@ export async function uploadVaccinationRecordFile(file: File) {
   return storagePath;
 }
 
-export async function getVaccinationRecordFileUrl(recordId: string) {
+export interface VaccinationRecordFilePreview {
+  url: string;
+  contentType: string;
+  fileName: string;
+}
+
+export async function getVaccinationRecordFilePreview(
+  recordId: string,
+): Promise<VaccinationRecordFilePreview> {
   const user = auth.currentUser;
 
   if (!user) {
@@ -59,5 +67,16 @@ export async function getVaccinationRecordFileUrl(recordId: string) {
   }
 
   const blob = await response.blob();
-  return URL.createObjectURL(blob);
+  const contentDisposition = response.headers.get("content-disposition") || "";
+
+  return {
+    url: URL.createObjectURL(blob),
+    contentType: blob.type || response.headers.get("content-type") || "application/octet-stream",
+    fileName: getFileName(contentDisposition) || `${recordId}-source-file`,
+  };
+}
+
+function getFileName(contentDisposition: string) {
+  const match = contentDisposition.match(/filename="([^"]+)"/i);
+  return match?.[1] || "";
 }
