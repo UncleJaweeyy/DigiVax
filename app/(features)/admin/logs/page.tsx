@@ -17,6 +17,7 @@ import {
 import Button from "@/components/ui/Button";
 import { getSystemLogs } from "@/actions/admin/log-actions";
 import type { LogDateMode, LogType, SystemLog } from "@/app/types/log";
+import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { auth } from "@/lib/firebase/client";
 
 const logTypes: LogType[] = [
@@ -29,6 +30,7 @@ const logTypes: LogType[] = [
   "Digitalized Record",
   "Record Updated",
   "Review Completed",
+  "Export CSV",
 ];
 
 const dateModes: LogDateMode[] = ["All Dates", "Specific Date", "Date Range"];
@@ -86,6 +88,34 @@ export default function LogsPage() {
     }
   };
 
+  const handleExportCsv = async () => {
+    if (logs.length === 0) {
+      return;
+    }
+
+    const csvRows = [
+      ["Status", "User", "Action", "Target", "Timestamp"],
+      ...logs.map((log) => [log.status, log.user, log.action, log.target, log.timestamp]),
+    ];
+    const csv = csvRows.map((row) => row.map(escapeCsvValue).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `digivax-system-logs-${getTodayDateString()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    await writeClientAuditLog({
+      action: "Export CSV",
+      target: `${logs.length} system log${logs.length === 1 ? "" : "s"}`,
+      status: "success",
+    });
+  };
+
   return (
     <div className="p-8 bg-slate-50 h-full flex flex-col overflow-hidden">
       {/* Header Area */}
@@ -94,7 +124,12 @@ export default function LogsPage() {
           <h1 className="text-4xl font-bold text-slate-900">System Logs</h1>
           <p className="text-slate-500 mt-2 font-medium italic">Audit trail of all administrative and staff actions</p>
         </div>
-        <Button variant="outline" className="flex items-center gap-2 border-slate-200 text-slate-600 bg-white shadow-sm">
+        <Button
+          variant="outline"
+          onClick={handleExportCsv}
+          disabled={isLoading || logs.length === 0}
+          className="flex items-center gap-2 border-slate-200 bg-white text-slate-600 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <Download size={18} /> Export CSV
         </Button>
       </div>
@@ -377,4 +412,14 @@ function formatDateLabel(date: string) {
     day: "numeric",
     year: "numeric",
   }).format(parsedDate);
+}
+
+function escapeCsvValue(value: string) {
+  const escapedValue = value.replace(/"/g, "\"\"");
+
+  if (/[",\r\n]/.test(escapedValue)) {
+    return `"${escapedValue}"`;
+  }
+
+  return escapedValue;
 }

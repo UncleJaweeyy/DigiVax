@@ -9,7 +9,8 @@ export type LogType =
   | "Password Reset"
   | "Digitalized Record"
   | "Record Updated"
-  | "Review Completed";
+  | "Review Completed"
+  | "Export CSV";
 
 export type LogDateMode = "All Dates" | "Specific Date" | "Date Range";
 
