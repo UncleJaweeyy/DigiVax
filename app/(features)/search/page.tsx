@@ -36,6 +36,7 @@ export default function SearchPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [sourcePreview, setSourcePreview] = useState<VaccinationRecordFilePreview | null>(null);
   const [isSourceLoading, setIsSourceLoading] = useState(false);
+  const [isPreviewRendering, setIsPreviewRendering] = useState(false);
   const [sourceZoom, setSourceZoom] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -82,6 +83,7 @@ export default function SearchPage() {
 
   const openSourceFile = async (record: VaccinationRecordDocument) => {
     setIsSourceLoading(true);
+    setIsPreviewRendering(true);
     try {
       const preview = await getVaccinationRecordFilePreview(record.id);
       setSourcePreview(preview);
@@ -100,6 +102,7 @@ export default function SearchPage() {
 
     setSourcePreview(null);
     setSourceZoom(1);
+    setIsPreviewRendering(false);
   };
 
   const downloadSourcePreview = () => {
@@ -383,86 +386,99 @@ export default function SearchPage() {
       )}
 
       {sourcePreview && (
-        <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950/90 backdrop-blur-sm">
-          <div className="flex items-center justify-between border-b border-white/10 bg-slate-950 px-5 py-4 text-white">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">{sourcePreview.fileName}</p>
-              <p className="text-xs text-slate-400">{Math.round(sourceZoom * 100)}%</p>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/65 p-4 backdrop-blur-sm">
+          <div className="flex h-[min(86vh,820px)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-slate-900">{sourcePreview.fileName}</p>
+                <p className="text-xs font-medium text-slate-400">{Math.round(sourceZoom * 100)}%</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSourceZoom((value) => Math.max(0.5, value - 0.25))}
+                  className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-blue-600"
+                  title="Zoom out"
+                >
+                  <ZoomOut size={18} />
+                </button>
+                <button
+                  onClick={() => setSourceZoom(1)}
+                  className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-blue-600"
+                  title="Reset zoom"
+                >
+                  <RotateCcw size={18} />
+                </button>
+                <button
+                  onClick={() => setSourceZoom((value) => Math.min(3, value + 0.25))}
+                  className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-blue-600"
+                  title="Zoom in"
+                >
+                  <ZoomIn size={18} />
+                </button>
+                <button
+                  onClick={downloadSourcePreview}
+                  className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-blue-600"
+                  title="Download"
+                >
+                  <Download size={18} />
+                </button>
+                <button
+                  onClick={closeSourcePreview}
+                  className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSourceZoom((value) => Math.max(0.5, value - 0.25))}
-                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
-                title="Zoom out"
-              >
-                <ZoomOut size={18} />
-              </button>
-              <button
-                onClick={() => setSourceZoom(1)}
-                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
-                title="Reset zoom"
-              >
-                <RotateCcw size={18} />
-              </button>
-              <button
-                onClick={() => setSourceZoom((value) => Math.min(3, value + 0.25))}
-                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
-                title="Zoom in"
-              >
-                <ZoomIn size={18} />
-              </button>
-              <button
-                onClick={downloadSourcePreview}
-                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
-                title="Download"
-              >
-                <Download size={18} />
-              </button>
-              <button
-                onClick={closeSourcePreview}
-                className="rounded-xl border border-white/10 p-2 text-slate-200 hover:bg-white/10"
-                title="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
+            <div className="relative flex-1 overflow-auto bg-slate-100 p-5">
+              {isPreviewRendering && <SourcePreviewSkeleton />}
 
-          <div className="flex-1 overflow-auto p-6">
-            <div className="flex min-h-full items-start justify-center">
-              {sourcePreview.contentType.startsWith("image/") ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={sourcePreview.url}
-                  alt={sourcePreview.fileName}
-                  className="max-w-none rounded-lg bg-white shadow-2xl"
-                  style={{
-                    transform: `scale(${sourceZoom})`,
-                    transformOrigin: "top center",
-                  }}
-                />
-              ) : sourcePreview.contentType === "application/pdf" ? (
-                <iframe
-                  src={sourcePreview.url}
-                  title={sourcePreview.fileName}
-                  className="h-[80vh] w-[min(1000px,90vw)] origin-top rounded-lg border-0 bg-white shadow-2xl"
-                  style={{
-                    transform: `scale(${sourceZoom})`,
-                  }}
-                />
-              ) : (
-                <div className="rounded-2xl bg-white p-8 text-center text-slate-700 shadow-2xl">
-                  <FileText className="mx-auto mb-4 text-blue-600" size={42} />
-                  <p className="font-bold">Preview is not available for this file type.</p>
-                  <button
-                    onClick={downloadSourcePreview}
-                    className="mt-5 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
-                  >
-                    Download File
-                  </button>
-                </div>
-              )}
+              <div className="flex min-h-full items-center justify-center">
+                {sourcePreview.contentType.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={sourcePreview.url}
+                    alt={sourcePreview.fileName}
+                    onLoad={() => setIsPreviewRendering(false)}
+                    onError={() => setIsPreviewRendering(false)}
+                    className={`rounded-lg bg-white object-contain shadow-xl transition-opacity ${
+                      isPreviewRendering ? "opacity-0" : "opacity-100"
+                    }`}
+                    style={{
+                      maxHeight: sourceZoom === 1 ? "calc(86vh - 150px)" : undefined,
+                      maxWidth: sourceZoom === 1 ? "100%" : undefined,
+                      width: sourceZoom === 1 ? "auto" : `${sourceZoom * 100}%`,
+                      transformOrigin: "center center",
+                    }}
+                  />
+                ) : sourcePreview.contentType === "application/pdf" ? (
+                  <iframe
+                    src={sourcePreview.url}
+                    title={sourcePreview.fileName}
+                    onLoad={() => setIsPreviewRendering(false)}
+                    className={`h-full min-h-[560px] w-full origin-center rounded-lg border-0 bg-white shadow-xl transition-opacity ${
+                      isPreviewRendering ? "opacity-0" : "opacity-100"
+                    }`}
+                    style={{
+                      transform: `scale(${sourceZoom})`,
+                    }}
+                  />
+                ) : (
+                  <div className="rounded-2xl bg-white p-8 text-center text-slate-700 shadow-xl">
+                    <FileText className="mx-auto mb-4 text-blue-600" size={42} />
+                    <p className="font-bold">Preview is not available for this file type.</p>
+                    <button
+                      onClick={downloadSourcePreview}
+                      className="mt-5 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+                    >
+                      Download File
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -476,6 +492,19 @@ function RecordFact({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
       <p className="mt-1 break-words text-sm font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function SourcePreviewSkeleton() {
+  return (
+    <div className="absolute inset-5 z-10 flex items-center justify-center rounded-2xl border border-slate-200 bg-white">
+      <div className="w-full max-w-2xl space-y-4 p-8">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+        <div className="mx-auto h-4 w-44 animate-pulse rounded-full bg-slate-200" />
+        <div className="mx-auto aspect-[4/3] w-full max-w-lg animate-pulse rounded-2xl bg-slate-100" />
+        <div className="mx-auto h-3 w-64 animate-pulse rounded-full bg-slate-100" />
+      </div>
     </div>
   );
 }
