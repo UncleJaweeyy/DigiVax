@@ -85,7 +85,7 @@ Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:
   "status": "Pending Review",
   "sourceFileName": "scan.png",
   "sourceFileType": "image/png",
-  "sourceStoragePath": "",
+  "sourceStoragePath": "vaccination-records/AUTH_USER_UID/scan.png",
   "searchKeywords": ["juan", "dela", "cruz", "pfizer", "2023"],
   "createdBy": "AUTH_USER_UID",
   "createdByName": "Staff Name",
@@ -94,4 +94,4 @@ Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:
 }
 ```
 
-The current digitization page saves reviewed OCR text to this collection. Firebase Storage is not wired yet, so `sourceStoragePath` remains empty until file uploads are added.
+The current digitization page uploads the selected scan to Firebase Storage under `vaccination-records/{uid}/...`, then saves the reviewed OCR text and `sourceStoragePath` to Firestore.

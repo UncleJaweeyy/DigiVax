@@ -47,7 +47,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
     status: "Pending Review",
     sourceFileName: input.sourceFileName || "",
     sourceFileType: input.sourceFileType || "",
-    sourceStoragePath: "",
+    sourceStoragePath: input.sourceStoragePath || "",
     searchKeywords: parsed.searchKeywords,
     createdBy: user.uid,
     createdByName: profile.name || profile.email,

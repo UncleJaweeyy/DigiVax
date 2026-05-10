@@ -10,6 +10,7 @@ import {
   ScanStatus,
 } from "@/actions/records/scan-actions";
 import { createVaccinationRecord } from "@/lib/firebase/records";
+import { uploadVaccinationRecordFile } from "@/lib/firebase/storage";
 
 export default function DigitalizePage() {
   const [status, setStatus] = useState<ScanStatus>("idle");
@@ -65,11 +66,16 @@ export default function DigitalizePage() {
     setIsSaving(true);
 
     try {
+      const sourceStoragePath = selectedFile
+        ? await uploadVaccinationRecordFile(selectedFile)
+        : "";
+
       const recordId = await createVaccinationRecord({
         rawText: textPreview,
         correctedText: textPreview,
         sourceFileName: selectedFile?.name,
         sourceFileType: selectedFile?.type,
+        sourceStoragePath,
       });
 
       alert(`Saved record ${recordId}`);

@@ -34,4 +34,5 @@ export interface NewVaccinationRecordInput {
   correctedText?: string;
   sourceFileName?: string;
   sourceFileType?: string;
+  sourceStoragePath?: string;
 }
