@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { StaffMember, UserStatus, UserRole } from "@/app/types/user";
 import { getStaffDirectory, updateUserStatus, createStaffAccount, resetUserPassword } from "@/actions/admin/user-actions";
+import { auth } from "@/lib/firebase/client";
 
 export default function ManageStaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -26,7 +27,8 @@ export default function ManageStaffPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const data = await getStaffDirectory();
+        const idToken = await getAdminIdToken();
+        const data = await getStaffDirectory(idToken);
         setStaff(data);
       } catch (error) {
         console.error(error);
@@ -43,15 +45,16 @@ export default function ManageStaffPage() {
     
     if (confirmReset) {
       try {
-        const result = await resetUserPassword(id);
+        const idToken = await getAdminIdToken();
+        const result = await resetUserPassword(idToken, id);
         // Show the actual random password to the Admin
         alert(
           `SUCCESS!\n\n` +
           `The password for ${name} has been reset to: ${result.tempPass}\n\n` +
           `Please provide this code to the user. They will be forced to change it upon login.`
         );
-      } catch {
-        alert("Failed to reset password. Please try again.");
+      } catch (error) {
+        alert(getErrorMessage(error, "Failed to reset password. Please try again."));
       }
     }
   };
@@ -71,21 +74,27 @@ export default function ManageStaffPage() {
   // HANDLERS
   const handleUpdateStatus = async (id: string, newStatus: UserStatus) => {
     try {
-      await updateUserStatus(id, newStatus);
+      const idToken = await getAdminIdToken();
+      await updateUserStatus(idToken, id, newStatus);
       setStaff(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
-    } catch { alert("Failed to update status"); }
+    } catch (error) {
+      alert(getErrorMessage(error, "Failed to update status"));
+    }
   };
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       // Sends formData (including the admin's manual password) to the action
-      const response = await createStaffAccount(formData);
+      const idToken = await getAdminIdToken();
+      const response = await createStaffAccount(idToken, formData);
       // Ensure we add the returned user which now includes forcePasswordChange: true
       setStaff([response.user, ...staff]);
       setIsModalOpen(false);
       setFormData({ name: "", email: "", role: "bhw", password: "" });
-    } catch { alert("Failed to create user"); }
+    } catch (error) {
+      alert(getErrorMessage(error, "Failed to create user"));
+    }
   };
 
   if (isLoading) return (
@@ -217,6 +226,20 @@ export default function ManageStaffPage() {
       )}
     </div>
   );
+}
+
+async function getAdminIdToken() {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("Please sign in again.");
+  }
+
+  return currentUser.getIdToken();
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 function StatusBadge({ status }: { status: UserStatus }) {

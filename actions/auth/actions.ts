@@ -19,9 +19,9 @@ export const loginUser = async (email: string, password: string) => {
       throw new Error("This Firebase user has no DigiVax staff profile yet.");
     }
 
-    if (profile.status === "Disabled") {
+    if (profile.status !== "Active") {
       await signOut(auth);
-      throw new Error("Access Denied: This account is disabled.");
+      throw new Error("Access Denied: This account is not active.");
     }
 
     return profile;

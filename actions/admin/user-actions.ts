@@ -1,99 +1,176 @@
-// src/actions/admin/user-actions.ts
-import { STAFF_MEMBERS } from "@/lib/dummy-data";
-import { StaffMember, UserStatus } from "@/app/types/user";
+"use server";
+
+import { FieldValue, type DocumentData } from "firebase-admin/firestore";
+
+import type { StaffMember, UserRole, UserStatus } from "@/app/types/user";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 
 type CreateStaffAccountInput = Pick<StaffMember, "name" | "email" | "role"> & {
   password: string;
 };
 
-/**
- * FETCH ALL STAFF
- * Ready for GET /api/admin/users
- */
-export const getStaffDirectory = async (): Promise<StaffMember[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  
-  /* const response = await fetch('/api/admin/users');
-  if (!response.ok) throw new Error("Failed to fetch directory");
-  return await response.json(); 
-  */
-  return STAFF_MEMBERS as StaffMember[];
+const usersCollection = "users";
+
+export const getStaffDirectory = async (idToken: string): Promise<StaffMember[]> => {
+  await assertAdmin(idToken);
+
+  const snapshot = await adminDb.collection(usersCollection).orderBy("name", "asc").get();
+
+  return snapshot.docs.map((doc) => mapStaffMember(doc.id, doc.data()));
 };
 
-/**
- * UPDATE USER STATUS
- * Ready for PATCH /api/admin/users/:id/status
- */
-export const updateUserStatus = async (userId: string, status: UserStatus) => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  
-  /*
-  const response = await fetch(`/api/admin/users/${userId}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status })
+export const updateUserStatus = async (
+  idToken: string,
+  userId: string,
+  status: UserStatus,
+) => {
+  const adminUid = await assertAdmin(idToken);
+
+  if (!isUserStatus(status)) {
+    throw new Error("Invalid account status.");
+  }
+
+  if (adminUid === userId && status !== "Active") {
+    throw new Error("You cannot restrict your own admin account.");
+  }
+
+  await adminAuth.updateUser(userId, {
+    disabled: status === "Disabled",
   });
-  if (!response.ok) throw new Error("Update failed");
-  */
-  
-  console.log(`Status of ${userId} changed to ${status}`);
+
+  await adminDb.collection(usersCollection).doc(userId).update({
+    status,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
   return { success: true };
 };
 
-/**
- * CREATE NEW USER
- * Takes Admin-inputted password and sets the Force Change flag.
- */
-export const createStaffAccount = async (userData: CreateStaffAccountInput) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+export const createStaffAccount = async (
+  idToken: string,
+  userData: CreateStaffAccountInput,
+) => {
+  await assertAdmin(idToken);
 
-  // The 'userData' coming from your modal contains: name, email, role, and password
+  const name = userData.name.trim();
+  const email = userData.email.trim().toLowerCase();
+  const password = userData.password.trim();
+
+  if (!name || !email || !password) {
+    throw new Error("Name, email, and password are required.");
+  }
+
+  if (!isUserRole(userData.role)) {
+    throw new Error("Invalid system role.");
+  }
+
+  const authUser = await adminAuth.createUser({
+    displayName: name,
+    email,
+    password,
+    disabled: false,
+  });
+
   const newUser: StaffMember = {
-    ...userData,
-    id: Math.random().toString(36).substring(7),
-    status: "Pending",
-    joined: new Date().toLocaleDateString(),
-    forcePasswordChange: true // Forces user to change the admin-set password on first login
+    id: authUser.uid,
+    name,
+    email,
+    role: userData.role,
+    status: "Active",
+    joined: new Date().toISOString().slice(0, 10),
+    forcePasswordChange: true,
   };
 
-  /* const response = await fetch('/api/admin/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newUser)
-  });
-  if (!res.ok) throw new Error("Could not create user");
-  */
+  try {
+    await adminDb.collection(usersCollection).doc(authUser.uid).set({
+      uid: authUser.uid,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      status: newUser.status,
+      forcePasswordChange: true,
+      joined: newUser.joined,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    await adminAuth.deleteUser(authUser.uid).catch(() => undefined);
+    throw error;
+  }
 
   return { success: true, user: newUser };
 };
 
-/**
- * RESET USER PASSWORD
- * Generates a random 6-digit numeric code.
- */
-export const resetUserPassword = async (userId: string) => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
+export const resetUserPassword = async (idToken: string, userId: string) => {
+  await assertAdmin(idToken);
 
-  // Generate random 6-digit number
-  const randomNumber = Math.floor(100000 + Math.random() * 900000);
-  const tempPass = `DVX-${randomNumber}`;
+  const userSnapshot = await adminDb.collection(usersCollection).doc(userId).get();
 
-  /* const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-        password: tempPass, 
-        forcePasswordChange: true 
-    })
+  if (!userSnapshot.exists) {
+    throw new Error("Staff profile not found.");
+  }
+
+  const profile = mapStaffMember(userSnapshot.id, userSnapshot.data() || {});
+
+  if (profile.status === "Disabled") {
+    throw new Error("Enable this account before resetting its password.");
+  }
+
+  const tempPass = `DVX-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  await adminAuth.updateUser(userId, {
+    password: tempPass,
   });
-  if (!response.ok) throw new Error("Reset failed");
-  */
 
-  console.log(`Temporary password generated for ${userId}`);
+  await userSnapshot.ref.update({
+    forcePasswordChange: true,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 
-  return { 
-    success: true, 
-    tempPass: tempPass, 
-    message: "Temporary password generated successfully." 
+  return {
+    success: true,
+    tempPass,
+    message: "Temporary password generated successfully.",
   };
 };
+
+async function assertAdmin(idToken: string) {
+  if (!idToken) {
+    throw new Error("Admin session is missing.");
+  }
+
+  const decodedToken = await adminAuth.verifyIdToken(idToken);
+  const snapshot = await adminDb.collection(usersCollection).doc(decodedToken.uid).get();
+
+  if (!snapshot.exists) {
+    throw new Error("Your account does not have a DigiVax profile.");
+  }
+
+  const profile = snapshot.data();
+
+  if (profile?.role !== "admin" || profile.status !== "Active") {
+    throw new Error("Admin access is required.");
+  }
+
+  return decodedToken.uid;
+}
+
+function mapStaffMember(id: string, data: DocumentData): StaffMember {
+  return {
+    id,
+    name: String(data.name || "Unnamed Staff"),
+    email: String(data.email || ""),
+    role: data.role === "admin" ? "admin" : "bhw",
+    status: data.status === "Disabled" || data.status === "Pending" ? data.status : "Active",
+    joined: typeof data.joined === "string" ? data.joined : "",
+    forcePasswordChange: Boolean(data.forcePasswordChange),
+  };
+}
+
+function isUserRole(role: string): role is UserRole {
+  return role === "admin" || role === "bhw";
+}
+
+function isUserStatus(status: string): status is UserStatus {
+  return status === "Active" || status === "Pending" || status === "Disabled";
+}

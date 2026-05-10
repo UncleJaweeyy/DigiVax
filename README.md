@@ -68,6 +68,19 @@ Valid roles are `admin` and `bhw`. Valid statuses are `Active`, `Pending`, and `
 
 The local Firebase client config lives in `.env.local` and the same public values are included in `apphosting.yaml` for App Hosting builds. When handing this project off, use `.env.example` as the checklist for local setup.
 
+## Admin User Management
+
+The **Manage Staff** page uses server actions backed by the Firebase Admin SDK. Admin actions verify the signed-in user's Firebase ID token, check `users/{uid}` for `role: "admin"` and `status: "Active"`, then perform privileged Auth and Firestore work on the server.
+
+Supported admin operations:
+
+- List staff profiles from Firestore `users`.
+- Create Firebase Auth users and matching `users/{uid}` profile documents.
+- Enable, disable, or mark staff accounts pending.
+- Reset a staff password and set `forcePasswordChange: true`.
+
+Firebase App Hosting provides the server credentials needed by the Admin SDK. For local development outside App Hosting, use Application Default Credentials or set `FIREBASE_CLIENT_EMAIL` and `FIREBASE_PRIVATE_KEY` in your local environment.
+
 ## Firestore Data Model
 
 Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:

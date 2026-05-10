@@ -21,7 +21,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (profile.status === "Disabled") {
+    if (profile.status !== "Active") {
       router.replace("/login");
       return;
     }
