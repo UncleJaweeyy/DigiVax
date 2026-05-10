@@ -9,11 +9,14 @@ import {
   processScan,
   ScanStatus,
 } from "@/actions/records/scan-actions";
+import { createVaccinationRecord } from "@/lib/firebase/records";
 
 export default function DigitalizePage() {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [textPreview, setTextPreview] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -22,6 +25,7 @@ export default function DigitalizePage() {
   const handleFileProcessing = async (file: File) => {
     setStatus("processing");
     setTextPreview("Initializing OCR Engine...");
+    setSelectedFile(file);
 
     try {
       // FIX: Wrap file in FormData so it can be sent to the server
@@ -37,7 +41,7 @@ export default function DigitalizePage() {
         setStatus("error");
         setTextPreview(result.error || "Error processing file.");
       }
-    } catch (err) {
+    } catch {
       setStatus("error");
       setTextPreview("Failed to connect to server.");
     }
@@ -57,12 +61,28 @@ export default function DigitalizePage() {
     }
   };
 
-  const handleSave = () => {
-    alert("Saved!");
-    setTextPreview("");
-    setStatus("idle");
-    setIsEditing(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  const handleSave = async () => {
+    setIsSaving(true);
+
+    try {
+      const recordId = await createVaccinationRecord({
+        rawText: textPreview,
+        correctedText: textPreview,
+        sourceFileName: selectedFile?.name,
+        sourceFileType: selectedFile?.type,
+      });
+
+      alert(`Saved record ${recordId}`);
+      setTextPreview("");
+      setStatus("idle");
+      setIsEditing(false);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to save record.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Status Styling Logic
@@ -173,10 +193,10 @@ export default function DigitalizePage() {
 
             <Button
               className="px-10"
-              disabled={status !== "done" || isEditing}
+              disabled={status !== "done" || isEditing || isSaving}
               onClick={handleSave}
             >
-              Save Record
+              {isSaving ? "Saving..." : "Save Record"}
             </Button>
           </div>
         </div>

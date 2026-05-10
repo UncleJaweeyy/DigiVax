@@ -10,9 +10,18 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
+    function hasProfile() {
       return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActiveStaff() {
+      return hasProfile()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == "Active";
+    }
+
+    function isAdmin() {
+      return isActiveStaff()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
@@ -24,6 +33,20 @@ service cloud.firestore {
           isSelf(userId)
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(["forcePasswordChange", "updatedAt"])
         );
+    }
+
+    match /vaccinationRecords/{recordId} {
+      allow read: if isActiveStaff();
+      allow create: if isActiveStaff()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status in ["Pending Review", "Completed"];
+      allow update: if isAdmin()
+        || (
+          isActiveStaff()
+          && resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdBy == resource.data.createdBy
+        );
+      allow delete: if isAdmin();
     }
   }
 }

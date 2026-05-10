@@ -67,3 +67,31 @@ Enable **Authentication > Sign-in method > Email/Password** in the Firebase cons
 Valid roles are `admin` and `bhw`. Valid statuses are `Active`, `Pending`, and `Disabled`. Set `forcePasswordChange` to `true` for temporary passwords.
 
 The local Firebase client config lives in `.env.local` and the same public values are included in `apphosting.yaml` for App Hosting builds. When handing this project off, use `.env.example` as the checklist for local setup.
+
+## Firestore Data Model
+
+Digitized vaccination records are stored in `vaccinationRecords/{recordId}`:
+
+```json
+{
+  "patientName": "Juan Dela Cruz",
+  "patientNameLower": "juan dela cruz",
+  "vaccineType": "Pfizer",
+  "vaccineTypeLower": "pfizer",
+  "vaccinationDate": "2023-08-15",
+  "recordYear": "2023",
+  "rawText": "Original OCR output",
+  "correctedText": "User-reviewed OCR output",
+  "status": "Pending Review",
+  "sourceFileName": "scan.png",
+  "sourceFileType": "image/png",
+  "sourceStoragePath": "",
+  "searchKeywords": ["juan", "dela", "cruz", "pfizer", "2023"],
+  "createdBy": "AUTH_USER_UID",
+  "createdByName": "Staff Name",
+  "createdAt": "server timestamp",
+  "updatedAt": "server timestamp"
+}
+```
+
+The current digitization page saves reviewed OCR text to this collection. Firebase Storage is not wired yet, so `sourceStoragePath` remains empty until file uploads are added.

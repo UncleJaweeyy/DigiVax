@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, Edit, Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import Button from "@/components/ui/Button"; 
-import { getVaccinationRecords, RecordType } from "@/actions/records/search-actions";
+import type { VaccinationRecord } from "@/app/types/records";
+import { getVaccinationRecords } from "@/lib/firebase/records";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
-  const [records, setRecords] = useState<RecordType[]>([]);
+  const [records, setRecords] = useState<VaccinationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
