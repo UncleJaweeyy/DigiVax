@@ -11,10 +11,18 @@ service firebase.storage {
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
     }
 
+    function isActiveStatus(status) {
+      return status in ["Active", "active"];
+    }
+
+    function isStaffRole(role) {
+      return role in ["admin", "Admin", "bhw", "BHW"];
+    }
+
     function isActiveStaff() {
       return hasProfile()
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == "Active"
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "bhw"];
+        && isActiveStatus(firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status)
+        && isStaffRole(firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role);
     }
 
     function validRecordFile() {
