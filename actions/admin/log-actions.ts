@@ -1,6 +1,6 @@
 "use server";
 
-import type { LogType, SystemLog } from "@/app/types/log";
+import type { LogDateFilter, LogType, SystemLog } from "@/app/types/log";
 import type { DocumentData } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
@@ -13,6 +13,7 @@ export async function getSystemLogs(
   idToken: string,
   query: string,
   type: LogType = "All",
+  dateFilter: LogDateFilter = { mode: "All Dates" },
 ): Promise<SystemLog[]> {
   await assertAdmin(idToken);
 
@@ -29,8 +30,13 @@ export async function getSystemLogs(
       .get(),
   ]);
 
-  const auditLogs = auditSnapshot.docs.map((doc) => mapAuditLog(doc.id, doc.data()));
-  const recordLogs = recordSnapshot.docs.map((doc) => mapRecordLog(doc.id, doc.data()));
+  const dateBounds = getDateBounds(dateFilter);
+  const auditLogs = auditSnapshot.docs
+    .filter((doc) => isWithinDateBounds(doc.data().createdAt, dateBounds))
+    .map((doc) => mapAuditLog(doc.id, doc.data()));
+  const recordLogs = recordSnapshot.docs
+    .filter((doc) => isWithinDateBounds(doc.data().createdAt, dateBounds))
+    .map((doc) => mapRecordLog(doc.id, doc.data()));
   const logs = auditLogs.length > 0 ? auditLogs : recordLogs;
 
   const filteredByType = type === "All" ? logs : logs.filter((log) => log.action === type);
@@ -87,4 +93,76 @@ function toDate(value: unknown) {
   }
 
   return null;
+}
+
+function getDateBounds(filter: LogDateFilter) {
+  const today = getTodayDateString();
+
+  if (filter.mode === "Specific Date" && filter.date) {
+    const date = clampDateString(filter.date, today);
+
+    return {
+      start: parseStartOfDate(date),
+      end: parseEndOfDate(date),
+    };
+  }
+
+  if (filter.mode === "Date Range" && filter.from && filter.to) {
+    const from = clampDateString(filter.from, today);
+    const to = clampDateString(filter.to, today);
+    const startDate = from <= to ? from : to;
+    const endDate = from <= to ? to : from;
+
+    return {
+      start: parseStartOfDate(startDate),
+      end: parseEndOfDate(endDate),
+    };
+  }
+
+  return null;
+}
+
+function isWithinDateBounds(value: unknown, bounds: { start: Date; end: Date } | null) {
+  if (!bounds) {
+    return true;
+  }
+
+  const date = toDate(value);
+
+  if (!date) {
+    return false;
+  }
+
+  return date >= bounds.start && date <= bounds.end;
+}
+
+function clampDateString(date: string, maxDate: string) {
+  if (!isDateString(date)) {
+    return maxDate;
+  }
+
+  return date > maxDate ? maxDate : date;
+}
+
+function isDateString(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function parseStartOfDate(date: string) {
+  return new Date(`${date}T00:00:00.000+08:00`);
+}
+
+function parseEndOfDate(date: string) {
+  return new Date(`${date}T23:59:59.999+08:00`);
+}
+
+function getTodayDateString() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(new Date());
 }

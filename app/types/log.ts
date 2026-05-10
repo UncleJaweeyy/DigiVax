@@ -11,6 +11,15 @@ export type LogType =
   | "Record Updated"
   | "Review Completed";
 
+export type LogDateMode = "All Dates" | "Specific Date" | "Date Range";
+
+export interface LogDateFilter {
+  mode: LogDateMode;
+  date?: string;
+  from?: string;
+  to?: string;
+}
+
 export interface SystemLog {
   id: string;
   user: string;

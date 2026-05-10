@@ -12,10 +12,11 @@ import {
   Download,
   ChevronDown,
   ListFilter,
+  CalendarDays,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { getSystemLogs } from "@/actions/admin/log-actions";
-import type { LogType, SystemLog } from "@/app/types/log";
+import type { LogDateMode, LogType, SystemLog } from "@/app/types/log";
 import { auth } from "@/lib/firebase/client";
 
 const logTypes: LogType[] = [
@@ -30,10 +31,17 @@ const logTypes: LogType[] = [
   "Review Completed",
 ];
 
+const dateModes: LogDateMode[] = ["All Dates", "Specific Date", "Date Range"];
+
 export default function LogsPage() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<LogType>("All");
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const [dateMode, setDateMode] = useState<LogDateMode>("All Dates");
+  const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
+  const [specificDate, setSpecificDate] = useState("");
+  const [rangeFrom, setRangeFrom] = useState("");
+  const [rangeTo, setRangeTo] = useState("");
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +53,12 @@ export default function LogsPage() {
       setIsLoading(true);
       try {
         const idToken = await getIdToken();
-        const data = await getSystemLogs(idToken, query, typeFilter);
+        const data = await getSystemLogs(idToken, query, typeFilter, {
+          mode: dateMode,
+          date: specificDate,
+          from: rangeFrom,
+          to: rangeTo,
+        });
         setLogs(data);
         setCurrentPage(1);
       } catch (err) {
@@ -56,7 +69,9 @@ export default function LogsPage() {
     }, 300);
 
     return () => clearTimeout(delayDebounce);
-  }, [query, typeFilter]);
+  }, [dateMode, query, rangeFrom, rangeTo, specificDate, typeFilter]);
+
+  const today = getTodayDateString();
 
   // Pagination Logic
   const totalPages = Math.ceil(logs.length / itemsPerPage);
@@ -86,7 +101,7 @@ export default function LogsPage() {
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 flex-1 flex flex-col min-h-0">
         
-        <div className="mb-8 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_260px]">
+        <div className="mb-8 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_260px_320px]">
           <div className="relative">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
               {isLoading ? <Loader2 className="animate-spin text-blue-500" size={20} /> : <History className="text-slate-400" size={20} />}
@@ -136,6 +151,98 @@ export default function LogsPage() {
                     {type}
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDateMenuOpen((value) => !value)}
+              className="flex h-full min-h-[58px] w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 text-left font-bold text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-50 focus:ring-2 focus:ring-blue-500/20"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <CalendarDays size={18} className="shrink-0 text-blue-600" />
+                <span className="truncate">{getDateFilterLabel(dateMode, specificDate, rangeFrom, rangeTo)}</span>
+              </span>
+              <ChevronDown
+                size={18}
+                className={`shrink-0 text-slate-400 transition-transform ${isDateMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {isDateMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-full rounded-2xl border border-slate-100 bg-white p-3 shadow-xl shadow-slate-200/70">
+                <div className="space-y-2">
+                  {dateModes.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        setDateMode(mode);
+                        if (mode === "All Dates") {
+                          setSpecificDate("");
+                          setRangeFrom("");
+                          setRangeTo("");
+                          setIsDateMenuOpen(false);
+                        }
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all ${
+                        dateMode === mode
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <CalendarDays size={15} className={dateMode === mode ? "text-blue-600" : "text-slate-400"} />
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+
+                {dateMode === "Specific Date" && (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      max={today}
+                      value={specificDate}
+                      onChange={(event) => setSpecificDate(clampDate(event.target.value, today))}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                )}
+
+                {dateMode === "Date Range" && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        From
+                      </label>
+                      <input
+                        type="date"
+                        max={today}
+                        value={rangeFrom}
+                        onChange={(event) => setRangeFrom(clampDate(event.target.value, today))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        To
+                      </label>
+                      <input
+                        type="date"
+                        max={today}
+                        min={rangeFrom || undefined}
+                        value={rangeTo}
+                        onChange={(event) => setRangeTo(clampDate(event.target.value, today))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -222,4 +329,52 @@ async function getIdToken() {
   }
 
   return currentUser.getIdToken();
+}
+
+function getTodayDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function clampDate(date: string, maxDate: string) {
+  if (!date) {
+    return "";
+  }
+
+  return date > maxDate ? maxDate : date;
+}
+
+function getDateFilterLabel(
+  mode: LogDateMode,
+  specificDate: string,
+  rangeFrom: string,
+  rangeTo: string,
+) {
+  if (mode === "Specific Date") {
+    return specificDate ? formatDateLabel(specificDate) : "Specific Date";
+  }
+
+  if (mode === "Date Range") {
+    if (rangeFrom && rangeTo) {
+      return `${formatDateLabel(rangeFrom)} - ${formatDateLabel(rangeTo)}`;
+    }
+
+    return "Date Range";
+  }
+
+  return "All Dates";
+}
+
+function formatDateLabel(date: string) {
+  const parsedDate = new Date(`${date}T00:00:00`);
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsedDate);
 }
