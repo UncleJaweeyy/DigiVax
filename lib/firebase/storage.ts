@@ -1,4 +1,4 @@
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { ref, uploadBytes } from "firebase/storage";
 
 import { auth, storage } from "@/lib/firebase/client";
 
@@ -35,10 +35,29 @@ export async function uploadVaccinationRecordFile(file: File) {
   return storagePath;
 }
 
-export async function getVaccinationRecordFileUrl(storagePath: string) {
-  if (!storagePath) {
-    throw new Error("This record does not have an uploaded source file.");
+export async function getVaccinationRecordFileUrl(recordId: string) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error("Please sign in again before opening this file.");
   }
 
-  return getDownloadURL(ref(storage, storagePath));
+  if (!recordId) {
+    throw new Error("Missing record ID.");
+  }
+
+  const idToken = await user.getIdToken();
+  const response = await fetch(`/api/records/source?recordId=${encodeURIComponent(recordId)}`, {
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(payload?.error || "Unable to open source file.");
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }

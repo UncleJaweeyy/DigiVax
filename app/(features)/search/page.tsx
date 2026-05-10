@@ -61,7 +61,7 @@ export default function SearchPage() {
 
   const openSourceFile = async (record: VaccinationRecordDocument) => {
     try {
-      const url = await getVaccinationRecordFileUrl(record.sourceStoragePath || "");
+      const url = await getVaccinationRecordFileUrl(record.id);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Unable to open source file.");
