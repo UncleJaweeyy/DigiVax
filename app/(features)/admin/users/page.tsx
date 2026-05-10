@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { 
   Users, UserPlus, CheckCircle, XCircle, 
-  ShieldCheck, User as UserIcon, X, Clock, KeyRound
+  ShieldCheck, User as UserIcon, X, Clock, KeyRound, ChevronDown
 } from "lucide-react";
 import { StaffMember, UserStatus, UserRole } from "@/app/types/user";
 import { getStaffDirectory, updateUserStatus, createStaffAccount, resetUserPassword } from "@/actions/admin/user-actions";
@@ -13,6 +13,7 @@ export default function ManageStaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "All">("All");
@@ -213,10 +214,46 @@ export default function ManageStaffPage() {
               <input required className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl !text-slate-900 outline-none" placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
               <input required type="email" className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl !text-slate-900 outline-none" placeholder="Email Address" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
               <input required type="password" className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl !text-slate-900 outline-none" placeholder="Set Password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-              <select className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold !text-slate-700 outline-none" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as UserRole})}>
-                <option value="bhw">Health Worker (BHW)</option>
-                <option value="admin">Administrator</option>
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsRoleMenuOpen((value) => !value)}
+                  className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-6 py-4 text-left font-bold !text-slate-700 outline-none ring-blue-600 transition-all hover:bg-slate-100 focus:ring-2"
+                >
+                  <span>{getRoleLabel(formData.role)}</span>
+                  <ChevronDown
+                    size={18}
+                    className={`text-slate-400 transition-transform ${isRoleMenuOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {isRoleMenuOpen && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-10 overflow-hidden rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-200/70">
+                    {(["bhw", "admin"] as UserRole[]).map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, role });
+                          setIsRoleMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-all ${
+                          formData.role === role
+                            ? "bg-blue-50 !text-blue-700"
+                            : "!text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {role === "admin" ? (
+                          <ShieldCheck size={16} className="text-purple-500" />
+                        ) : (
+                          <UserIcon size={16} className="text-blue-500" />
+                        )}
+                        {getRoleLabel(role)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button className="w-full  bg-blue-600 text-white py-3 rounded-2xl font-bold text-lg shadow-xl shadow-blue-100 hover:bg-blue-700">
                 Create Account
               </button>
@@ -240,6 +277,10 @@ async function getAdminIdToken() {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function getRoleLabel(role: UserRole) {
+  return role === "admin" ? "Administrator" : "Health Worker (BHW)";
 }
 
 function StatusBadge({ status }: { status: UserStatus }) {
