@@ -9,6 +9,11 @@ import { StaffMember, UserStatus, UserRole } from "@/app/types/user";
 import { getStaffDirectory, updateUserStatus, createStaffAccount, resetUserPassword } from "@/actions/admin/user-actions";
 import { auth } from "@/lib/firebase/client";
 
+const rolePrefix = {
+  admin: "ADMIN",
+  bhw: "BHW",
+} satisfies Record<UserRole, string>;
+
 export default function ManageStaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +93,10 @@ export default function ManageStaffPage() {
     try {
       // Sends formData (including the admin's manual password) to the action
       const idToken = await getAdminIdToken();
-      const response = await createStaffAccount(idToken, formData);
+      const response = await createStaffAccount(idToken, {
+        ...formData,
+        name: getPrefixedName(formData.name, formData.role),
+      });
       // Ensure we add the returned user which now includes forcePasswordChange: true
       setStaff([response.user, ...staff]);
       setIsModalOpen(false);
@@ -211,7 +219,12 @@ export default function ManageStaffPage() {
             </button>
             <h2 className="text-2xl font-bold !text-slate-800">Add New User</h2>
             <form onSubmit={handleAddStaff} className="space-y-5 mt-6">
-              <input required className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl !text-slate-900 outline-none" placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <div className="flex rounded-2xl bg-slate-50">
+                <div className="flex min-w-20 items-center justify-center rounded-l-2xl border-r border-slate-100 px-4 text-xs font-black tracking-widest text-blue-600">
+                  {rolePrefix[formData.role]}
+                </div>
+                <input required className="w-full px-5 py-4 bg-transparent !text-slate-900 outline-none" placeholder="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: stripRolePrefix(e.target.value)})} />
+              </div>
               <input required type="email" className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl !text-slate-900 outline-none" placeholder="Email Address" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
               <input required type="password" className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl !text-slate-900 outline-none" placeholder="Set Password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
               <div className="relative">
@@ -281,6 +294,16 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function getRoleLabel(role: UserRole) {
   return role === "admin" ? "Administrator" : "Health Worker (BHW)";
+}
+
+function getPrefixedName(name: string, role: UserRole) {
+  const unprefixedName = stripRolePrefix(name);
+
+  return `${rolePrefix[role]} ${unprefixedName}`.trim();
+}
+
+function stripRolePrefix(name: string) {
+  return name.trimStart().replace(/^(admin|bhw)\s+/i, "");
 }
 
 function StatusBadge({ status }: { status: UserStatus }) {

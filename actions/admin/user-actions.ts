@@ -87,7 +87,7 @@ export const createStaffAccount = async (
 ) => {
   const adminUid = await assertAdmin(idToken);
 
-  const name = userData.name.trim();
+  const name = formatStaffDisplayName(userData.name, userData.role);
   const email = userData.email.trim().toLowerCase();
   const password = userData.password.trim();
 
@@ -229,6 +229,14 @@ function isUserRole(role: string): role is UserRole {
 
 function isUserStatus(status: string): status is UserStatus {
   return status === "Active" || status === "Pending" || status === "Disabled";
+}
+
+function formatStaffDisplayName(name: string, role: UserRole) {
+  const trimmedName = name.trim().replace(/\s+/g, " ");
+  const unprefixedName = trimmedName.replace(/^(admin|bhw)\s+/i, "");
+  const prefix = role === "admin" ? "ADMIN" : "BHW";
+
+  return `${prefix} ${unprefixedName}`.trim();
 }
 
 function isAuthUserNotFound(error: unknown) {
