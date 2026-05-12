@@ -7,8 +7,8 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityTable } from "@/components/dashboard/RecentTable"; 
 // 2. IMPORT action logic
 import { getBHWDashboardOverview } from "@/actions/bhw/dashboard-actions";
-import type { DashboardStat } from "@/app/types/dashboard";
-import type { VaccinationRecord } from "@/app/types/records";
+import type { DashboardStat } from "@/types/dashboard";
+import type { VaccinationRecord } from "@/types/records";
 import { auth } from "@/lib/firebase/client";
 
 export default function DashboardPage() {

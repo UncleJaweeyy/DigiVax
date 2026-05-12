@@ -26,6 +26,7 @@ function getAdminApp() {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
+  // Local development can use explicit service-account fields from .env.local.
   if (projectId && clientEmail && privateKey) {
     return initializeApp({
       credential: cert({
@@ -38,6 +39,7 @@ function getAdminApp() {
     });
   }
 
+  // Firebase App Hosting and GOOGLE_APPLICATION_CREDENTIALS use ADC.
   return initializeApp({
     credential: applicationDefault(),
     projectId,
@@ -55,6 +57,7 @@ function getStorageBucket() {
   }
 
   try {
+    // App Hosting exposes runtime Firebase config as a JSON string.
     const config = JSON.parse(process.env.FIREBASE_CONFIG) as { storageBucket?: string };
     return config.storageBucket;
   } catch {
@@ -68,6 +71,7 @@ export const adminDb = getFirestore(adminApp);
 export const adminStorage = getStorage(adminApp);
 
 export function getFirebaseAdminError(error: unknown) {
+  // Translate ADC setup failures into a project-specific local setup message.
   if (isMissingDefaultCredentialError(error)) {
     return new Error(localAdminCredentialMessage);
   }

@@ -1,8 +1,8 @@
 "use server";
 
-import type { LogDateFilter, LogType, SystemLog } from "@/app/types/log";
+import type { LogDateFilter, LogType, SystemLog } from "@/types/log";
 import type { DocumentData } from "firebase-admin/firestore";
-import { formatAppDateTime } from "@/lib/date-format";
+import { formatAppDateTime } from "@/lib/utils/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
 import { mapAuditLog } from "@/lib/firebase/audit-log";

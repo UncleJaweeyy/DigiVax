@@ -2,7 +2,7 @@
 
 import { FieldValue, type DocumentData } from "firebase-admin/firestore";
 
-import type { StaffMember, UserRole, UserStatus } from "@/app/types/user";
+import type { StaffMember, UserRole, UserStatus } from "@/types/user";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
 import { writeAuditLog } from "@/lib/firebase/audit-log";

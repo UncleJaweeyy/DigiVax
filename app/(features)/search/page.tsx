@@ -18,7 +18,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import Button from "@/components/ui/Button"; 
-import type { VaccinationRecord, VaccinationRecordDocument, VaccinationRecordStatus } from "@/app/types/records";
+import type { VaccinationRecord, VaccinationRecordDocument, VaccinationRecordStatus } from "@/types/records";
 import { getVaccinationRecord, getVaccinationRecords, updateVaccinationRecord } from "@/lib/firebase/records";
 import {
   getVaccinationRecordFilePreview,

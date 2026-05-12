@@ -17,8 +17,8 @@ import type {
   VaccinationRecord,
   VaccinationRecordDocument,
   VaccinationRecordStatus,
-} from "@/app/types/records";
-import { formatAppDateTime } from "@/lib/date-format";
+} from "@/types/records";
+import { formatAppDateTime } from "@/lib/utils/date-format";
 import { auth, db } from "@/lib/firebase/client";
 import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { getUserProfile } from "@/lib/firebase/users";
@@ -42,6 +42,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
   const correctedText = input.correctedText?.trim() || input.rawText.trim();
   const parsed = parseVaccinationText(correctedText);
 
+  // Store both display fields and normalized/searchable fields for fast list rendering.
   const docRef = await addDoc(collection(db, recordsCollection), {
     patientName: parsed.patientName,
     patientNameLower: parsed.patientName.toLowerCase(),
@@ -73,6 +74,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
 }
 
 export async function getVaccinationRecords(queryText = ""): Promise<VaccinationRecord[]> {
+  // Keep the initial read bounded; full exports are handled by admin server actions.
   const recordsQuery = query(
     collection(db, recordsCollection),
     orderBy("createdAt", "desc"),
@@ -125,6 +127,7 @@ export async function updateVaccinationRecord(
 
   const parsed = parseVaccinationText(correctedText);
 
+  // Re-parse edited OCR text so corrected values immediately update search and dashboards.
   await updateDoc(doc(db, recordsCollection, recordId), {
     patientName: parsed.patientName,
     patientNameLower: parsed.patientName.toLowerCase(),
@@ -163,6 +166,7 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
   const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : null;
   const status = data.status === "Completed" ? "Completed" : "Pending Review";
 
+  // Firestore documents may be partially backfilled, so mapping provides UI-safe defaults.
   return {
     id,
     patientName: getString(data.patientName, "Unknown Patient"),

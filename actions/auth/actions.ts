@@ -14,6 +14,7 @@ import { getUserProfile, updateUserPasswordState } from "@/lib/firebase/users";
 
 export const loginUser = async (email: string, password: string) => {
   try {
+    // Browser-session persistence clears Firebase auth when the browser session closes.
     await setPersistence(auth, browserSessionPersistence);
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const profile = await getUserProfile(credential.user.uid);
@@ -52,6 +53,7 @@ export const updatePassword = async (
   }
 
   try {
+    // Reauthentication is required before changing a Firebase Auth password.
     const credential = EmailAuthProvider.credential(email, currentPassword);
     await reauthenticateWithCredential(user, credential);
     await updateFirebasePassword(user, newPassword);

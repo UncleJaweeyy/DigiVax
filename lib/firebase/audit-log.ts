@@ -2,8 +2,8 @@ import "server-only";
 
 import { FieldValue, type DocumentData } from "firebase-admin/firestore";
 
-import type { LogStatus, SystemLog } from "@/app/types/log";
-import { formatAppDateTime } from "@/lib/date-format";
+import type { LogStatus, SystemLog } from "@/types/log";
+import { formatAppDateTime } from "@/lib/utils/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 
 export interface AuditLogInput {

@@ -5,7 +5,7 @@ import { Users, UserPlus, HardDrive, ShieldCheck, Loader2, AlertTriangle, Downlo
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityTable } from "@/components/dashboard/RecentTable";
 import { exportAllRecords, exportSessionLogs, flushSessionLogs, getAdminDashboardOverview } from "@/actions/admin/dashboard-actions";
-import type { DashboardStat } from "@/app/types/dashboard";
+import type { DashboardStat } from "@/types/dashboard";
 import { auth } from "@/lib/firebase/client";
 
 interface AdminSummaryLog {

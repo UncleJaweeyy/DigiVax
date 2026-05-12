@@ -1,4 +1,4 @@
-import type { LogStatus } from "@/app/types/log";
+import type { LogStatus } from "@/types/log";
 import { auth } from "@/lib/firebase/client";
 
 interface ClientAuditLogInput {

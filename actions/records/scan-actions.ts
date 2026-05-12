@@ -2,7 +2,7 @@
 
 "use server";
 
-import { MOCK_EXTRACTED_TEXT } from "@/lib/dummy-data";
+import { MOCK_EXTRACTED_TEXT } from "@/lib/records/mock-data";
 
 export type ScanStatus = "idle" | "processing" | "done" | "error";
 
@@ -28,13 +28,10 @@ const useMockOcr = process.env.OCR_USE_MOCK === "true";
 const ocrApiUrl = process.env.OCR_API_URL;
 const ocrApiKey = process.env.OCR_API_KEY;
 
-/**
- * Main OCR processing function
- */
 export async function processScan(formData: FormData): Promise<ScanResult> {
   try {
     const file = formData.get("file") as File;
-    
+
     if (!file) return { success: false, error: "No file provided." };
 
     if (!allowedTypes.includes(file.type)) {
@@ -42,6 +39,7 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
     }
 
     if (!ocrApiUrl) {
+      // Mock OCR keeps demos usable while the PaddleOCR/NLP backend is offline or not deployed.
       if (!useMockOcr) {
         return {
           success: false,
@@ -56,6 +54,7 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
     const requestBody = new FormData();
     requestBody.append("file", file, file.name);
 
+    // The OCR API owns image preprocessing and model execution; this action normalizes its response.
     const headers = ocrApiKey ? { Authorization: `Bearer ${ocrApiKey}` } : undefined;
     const response = await fetch(ocrApiUrl, {
       method: "POST",

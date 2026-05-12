@@ -5,7 +5,7 @@ import {
   Users, UserPlus, CheckCircle, XCircle, 
   ShieldCheck, User as UserIcon, X, Clock, KeyRound, ChevronDown
 } from "lucide-react";
-import { StaffMember, UserStatus, UserRole } from "@/app/types/user";
+import { StaffMember, UserStatus, UserRole } from "@/types/user";
 import { getStaffDirectory, updateUserStatus, createStaffAccount, resetUserPassword } from "@/actions/admin/user-actions";
 import { auth } from "@/lib/firebase/client";
 

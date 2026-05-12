@@ -1,8 +1,8 @@
 "use server";
 
-import type { DashboardStat } from "@/app/types/dashboard";
+import type { DashboardStat } from "@/types/dashboard";
 import type { DocumentData } from "firebase-admin/firestore";
-import { formatAppDateTime } from "@/lib/date-format";
+import { formatAppDateTime } from "@/lib/utils/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
 import { mapAuditLog, writeAuditLog } from "@/lib/firebase/audit-log";
@@ -40,6 +40,7 @@ export const getAdminDashboardOverview = async (
 ): Promise<{ stats: DashboardStat[]; logs: AdminSummaryLog[] }> => {
   await assertAdmin(idToken);
 
+  // Load dashboard cards and recent activity together to keep the page responsive.
   const [usersSnapshot, recordsSnapshot, auditSnapshot] = await Promise.all([
     adminDb.collection(usersCollection).get(),
     adminDb.collection(recordsCollection).orderBy("createdAt", "desc").limit(100).get(),
@@ -77,6 +78,7 @@ export const getAdminDashboardOverview = async (
         desc: "Uploaded scan files",
       },
     ],
+    // Older deployments may not have auditLogs yet, so recent records act as a readable fallback.
     logs: auditSnapshot.docs.length > 0
       ? auditSnapshot.docs.map((doc) => {
           const log = mapAuditLog(doc.id, doc.data());
@@ -102,6 +104,7 @@ export const getAdminDashboardOverview = async (
 export const exportAllRecords = async (idToken: string) => {
   const uid = await assertAdmin(idToken);
 
+  // Admin exports intentionally read the full collection instead of the dashboard's 100-row preview.
   const [recordsSnapshot, profileSnapshot] = await Promise.all([
     adminDb.collection(recordsCollection).orderBy("createdAt", "desc").get(),
     adminDb.collection(usersCollection).doc(uid).get(),
@@ -180,6 +183,7 @@ export const flushSessionLogs = async (idToken: string) => {
   const profileSnapshot = await adminDb.collection(usersCollection).doc(uid).get();
   let deletedCount = 0;
 
+  // Firestore batch writes are capped, so logs are deleted in bounded chunks.
   while (true) {
     const snapshot = await adminDb.collection(auditLogsCollection).limit(450).get();
 

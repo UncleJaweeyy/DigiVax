@@ -29,6 +29,7 @@ const missingConfig = Object.entries(requiredConfig)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
+// Fail early when browser Firebase config is incomplete instead of surfacing vague SDK errors.
 if (missingConfig.length > 0) {
   throw new Error(`Missing Firebase config: ${missingConfig.join(", ")}`);
 }
@@ -40,12 +41,14 @@ export const storage = getStorage(firebaseApp);
 
 function getClientFirestore() {
   try {
+    // Persistent cache gives the browser basic offline reads and queued writes.
     return initializeFirestore(firebaseApp, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager(),
       }),
     });
   } catch {
+    // Reuse the existing instance during hot reloads or if another module initialized Firestore first.
     return getFirestore(firebaseApp);
   }
 }

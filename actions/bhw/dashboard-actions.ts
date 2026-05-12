@@ -1,8 +1,8 @@
 "use server";
 
-import type { DashboardStat } from "@/app/types/dashboard";
-import type { VaccinationRecord } from "@/app/types/records";
-import { formatAppDateTime } from "@/lib/date-format";
+import type { DashboardStat } from "@/types/dashboard";
+import type { VaccinationRecord } from "@/types/records";
+import { formatAppDateTime } from "@/lib/utils/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertActiveStaff } from "@/lib/firebase/admin-access";
 

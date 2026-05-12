@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import type { DocumentData } from "firebase-admin/firestore";
 
-import type { LogStatus } from "@/app/types/log";
+import type { LogStatus } from "@/types/log";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { writeAuditLog } from "@/lib/firebase/audit-log";
 

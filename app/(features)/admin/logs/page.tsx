@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { getSystemLogs } from "@/actions/admin/log-actions";
-import type { LogDateMode, LogType, SystemLog } from "@/app/types/log";
+import type { LogDateMode, LogType, SystemLog } from "@/types/log";
 import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { auth } from "@/lib/firebase/client";
 

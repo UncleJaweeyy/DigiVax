@@ -10,6 +10,7 @@ const unknownPatient = "Unknown Patient";
 const unknownVaccine = "Unspecified Vaccine";
 
 export function parseVaccinationText(text: string): ParsedVaccinationText {
+  // Until the TF-IDF/SVM classifier is connected, regex extraction gives saved records stable fields.
   const patientName = findValue(text, [
     /(?:name|patient name|child name)\s*:\s*([^\n\r]+)/i,
   ]) || unknownPatient;
@@ -23,6 +24,7 @@ export function parseVaccinationText(text: string): ParsedVaccinationText {
     /(?:date administered|date given|date)\s*:\s*([^\n\r]+)/i,
   ]) || "";
 
+  // Year is stored separately so dashboard/search filters can group records without reparsing text.
   const yearMatch = vaccinationDate.match(/\b(19|20)\d{2}\b/) || text.match(/\b(19|20)\d{2}\b/);
   const recordYear = yearMatch?.[0] || "";
 
@@ -51,6 +53,7 @@ function normalizeDisplayValue(value: string) {
 }
 
 function buildSearchKeywords(values: string[]) {
+  // Firestore stores a compact keyword list alongside the display fields for lightweight search.
   const words = values
     .join(" ")
     .toLowerCase()

@@ -9,6 +9,7 @@ export async function assertActiveStaff(idToken: string) {
   const role = String(profile?.role || "").toLowerCase();
   const status = String(profile?.status || "");
 
+  // BHW and admin users can use shared staff workflows.
   if (status !== "Active" || !["admin", "bhw"].includes(role)) {
     throw new Error("Active staff access is required.");
   }
@@ -21,6 +22,7 @@ export async function assertAdmin(idToken: string) {
   const role = String(profile?.role || "").toLowerCase();
   const status = String(profile?.status || "");
 
+  // Admin-only server actions must pass both Firebase auth and Firestore role checks.
   if (status !== "Active" || role !== "admin") {
     throw new Error("Admin access is required.");
   }
@@ -34,6 +36,7 @@ async function getVerifiedProfile(idToken: string) {
   }
 
   try {
+    // Firebase Auth proves identity; the Firestore profile proves DigiVax role and status.
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const snapshot = await adminDb.collection(usersCollection).doc(decodedToken.uid).get();
 

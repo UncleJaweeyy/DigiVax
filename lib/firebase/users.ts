@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
-import type { UserRole, UserStatus } from "@/app/types/user";
+import type { UserRole, UserStatus } from "@/types/user";
 import { db } from "@/lib/firebase/client";
 
 export interface UserProfile {

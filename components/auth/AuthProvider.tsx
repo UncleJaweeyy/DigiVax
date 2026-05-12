@@ -11,6 +11,14 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { auth } from "@/lib/firebase/client";
 import { getUserProfile, type UserProfile } from "@/lib/firebase/users";
+import {
+  clearSessionTimestamps,
+  ensureSessionTimestamps,
+  getMillisecondsUntilSessionExpiry,
+  maxBrowserTimeoutMs,
+  recordSessionActivity,
+  sessionActivityEvents,
+} from "@/lib/auth/session";
 
 interface AuthContextValue {
   user: User | null;
@@ -21,12 +29,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-const sessionStartedAtKey = "digivax:sessionStartedAt";
-const lastActivityAtKey = "digivax:lastActivityAt";
-const absoluteSessionDurationMs = 8 * 60 * 60 * 1000;
-const inactivityDurationMs = 30 * 60 * 1000;
-const maxTimeoutMs = 2_147_483_647;
-const activityEvents = ["click", "keydown", "mousemove", "scroll", "touchstart"] as const;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let unsubscribe: (() => void) | undefined;
     let cancelled = false;
 
+    // Session persistence makes Firebase forget the user when the browser session closes.
     setPersistence(auth, browserSessionPersistence)
       .catch(() => undefined)
       .finally(() => {
@@ -101,11 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      timeoutId = window.setTimeout(expireSession, Math.min(delay, maxTimeoutMs));
+      timeoutId = window.setTimeout(expireSession, Math.min(delay, maxBrowserTimeoutMs));
     };
 
     const recordActivity = () => {
-      sessionStorage.setItem(lastActivityAtKey, String(Date.now()));
+      recordSessionActivity();
       scheduleExpiry();
     };
 
@@ -117,7 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     ensureSessionTimestamps();
     scheduleExpiry();
-    activityEvents.forEach((eventName) => {
+    // User activity refreshes the inactivity window, but not the hard 8-hour cap.
+    sessionActivityEvents.forEach((eventName) => {
       window.addEventListener(eventName, recordActivity, { passive: true });
     });
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -127,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.clearTimeout(timeoutId);
       }
 
-      activityEvents.forEach((eventName) => {
+      sessionActivityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, recordActivity);
       });
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -151,39 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function ensureSessionTimestamps() {
-  const now = Date.now();
-
-  if (!sessionStorage.getItem(sessionStartedAtKey)) {
-    sessionStorage.setItem(sessionStartedAtKey, String(now));
-  }
-
-  if (!sessionStorage.getItem(lastActivityAtKey)) {
-    sessionStorage.setItem(lastActivityAtKey, String(now));
-  }
-}
-
-function clearSessionTimestamps() {
-  sessionStorage.removeItem(sessionStartedAtKey);
-  sessionStorage.removeItem(lastActivityAtKey);
-}
-
-function getMillisecondsUntilSessionExpiry() {
-  const now = Date.now();
-  const startedAt = getStoredTimestamp(sessionStartedAtKey) || now;
-  const lastActivityAt = getStoredTimestamp(lastActivityAtKey) || now;
-  const absoluteExpiry = startedAt + absoluteSessionDurationMs;
-  const inactivityExpiry = lastActivityAt + inactivityDurationMs;
-
-  return Math.min(absoluteExpiry, inactivityExpiry) - now;
-}
-
-function getStoredTimestamp(key: string) {
-  const value = Number(sessionStorage.getItem(key));
-
-  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export function useAuth() {
