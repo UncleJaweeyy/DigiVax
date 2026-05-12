@@ -43,7 +43,10 @@ ENV MODEL_DIR=/app/model \
     PADDLEOCR_DET_MODEL=PP-OCRv5_server_det \
     PADDLEOCR_REC_MODEL=PP-OCRv5_server_rec \
     DISABLE_MODEL_SOURCE_CHECK=True \
+    FLAGS_use_onednn=0 \
     FLAGS_use_mkldnn=0 \
+    ONEDNN_MAX_CPU_ISA=SSE41 \
+    DNNL_MAX_CPU_ISA=SSE41 \
     FLAGS_enable_pir_api=0 \
     PORT=8080
 
@@ -57,6 +60,6 @@ CMD exec gunicorn api_server:app \
         -k uvicorn.workers.UvicornWorker \
         -w 1 \
         -b "0.0.0.0:${PORT}" \
-        --timeout 120 \
+        --timeout 900 \
         --access-logfile - \
         --error-logfile -
