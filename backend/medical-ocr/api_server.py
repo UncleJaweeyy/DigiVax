@@ -725,22 +725,26 @@ def _clean_feeding_type(value: str) -> str:
 def _repair_under_five_date_of_birth(value: str, visits: list[dict]) -> str:
     """Use the first visit date only when OCR made the DOB impossible for under-five care."""
     dob = _clean_date_text(value)
-    if not dob:
-        return dob
-
     first_visit_date = next((visit.get("date", "") for visit in visits if visit.get("date")), "")
+    first_visit_match = re.search(r"\d{1,2}[-~/]\d{1,2}[-~/]\d{2,4}", first_visit_date)
+    if first_visit_match:
+        first_visit_date = first_visit_match.group(0)
+    if not dob:
+        return first_visit_date
     if not first_visit_date:
         return dob
 
-    dob_match = re.search(r"(\d{1,2})[-~/](\d{1,2})[-~/](\d{2})", dob)
-    visit_match = re.search(r"(\d{1,2})[-~/](\d{1,2})[-~/](\d{2})", first_visit_date)
-    if not dob_match or not visit_match:
+    dob_match = re.search(r"(\d{1,2})[-~/](\d{1,2})[-~/](\d{2,4})", dob)
+    visit_match = re.search(r"(\d{1,2})[-~/](\d{1,2})[-~/](\d{2,4})", first_visit_date)
+    if not dob_match:
+        return first_visit_date
+    if not visit_match:
         return dob
 
     dob_month, dob_day, dob_year = dob_match.groups()
     visit_month, visit_day, visit_year = visit_match.groups()
     current_two_digit_year = int(time.strftime("%y"))
-    dob_year_number = int(dob_year)
+    dob_year_number = int(dob_year[-2:])
 
     if (
         dob_month == visit_month

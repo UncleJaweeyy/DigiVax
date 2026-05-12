@@ -21,6 +21,7 @@ Layout (measured from actual form images):
 
 import os
 import cv2
+import re
 import time
 import logging
 import numpy as np
@@ -90,6 +91,40 @@ FIELD_KEYWORDS = {
     "Danger Signs":       ["ari", "danger"],
     "Other CC":           ["bcg", "hepa", "opv", "pcv", "penta", "mmr"],
     "Management":         [],
+}
+
+STATIC_FORM_TEXT = {
+    "citygovernmentoflegazpi",
+    "cityhealthdepartment",
+    "legazpicity",
+    "underfiveclinicrecord",
+    "philhealthandnonphilhealth",
+    "name",
+    "age",
+    "dateofbirth",
+    "address",
+    "mothersname",
+    "fathersname",
+    "nutritionalstatus",
+    "birthweight",
+    "epistatus",
+    "complete",
+    "incomplete",
+    "typeoffeeding",
+    "for01only",
+    "date",
+    "wt",
+    "vs",
+    "findingschiefcomplaint",
+    "episode",
+    "diarrhea",
+    "dangersigns",
+    "ari",
+    "othercc",
+    "management",
+    "bf",
+    "mixed",
+    "bot",
 }
 
 
@@ -215,6 +250,7 @@ class MedicalOCREngine:
         self._paddle_available = False
         self._paddleocr_engine = None
         self._paddleocr_available = False
+        self._last_hybrid_custom_reads = 0
         self.pipeline = os.getenv("MEDICAL_OCR_PIPELINE", "hybrid").strip().lower()
 
         if self.pipeline != "custom":
@@ -351,14 +387,20 @@ class MedicalOCREngine:
         """Use PP-OCRv5 boxes, then re-read crops with the fine-tuned medical recognizer."""
         paddle_regions = self._extract_paddleocr_regions(result, img_h, img_w)
         hybrid_regions = []
+        custom_reads = 0
 
         for region in paddle_regions:
+            if not self._should_run_custom_recognizer(region, img_h, img_w):
+                hybrid_regions.append(region)
+                continue
+
             x1, y1, x2, y2 = self._expanded_bbox(region.bbox, img_w, img_h)
             crop = img_bgr[y1:y2, x1:x2]
             if crop.size == 0:
                 hybrid_regions.append(region)
                 continue
 
+            custom_reads += 1
             custom_text, custom_conf = self._recognize_region(crop)
             text = self._choose_hybrid_text(
                 paddle_text=region.text,
@@ -377,7 +419,48 @@ class MedicalOCREngine:
                 field=self._assign_field(text, region.bbox, img_h, img_w),
             ))
 
+        self._last_hybrid_custom_reads = custom_reads
         return sorted(hybrid_regions, key=lambda item: (item.bbox[1] // 20, item.bbox[0]))
+
+    @classmethod
+    def _should_run_custom_recognizer(cls, region: TextRegion, img_h: int, img_w: int) -> bool:
+        """Re-read only likely handwritten/value boxes with the fine-tuned recognizer."""
+        x1, y1, x2, y2 = region.bbox
+        width = max(0, x2 - x1)
+        height = max(0, y2 - y1)
+        if width < 10 or height < 8:
+            return False
+
+        rel_y = y1 / max(float(img_h), 1.0)
+        rel_x = x1 / max(float(img_w), 1.0)
+        normalized = cls._compact_text(region.text)
+
+        if cls._is_static_form_text(normalized):
+            return False
+
+        # Header/table value regions carry the handwriting we care about most.
+        if rel_y >= 0.33:
+            return True
+
+        # Re-read likely filled-in header values but keep confident printed text as-is.
+        if region.confidence < 0.92:
+            return True
+        if rel_y < 0.33 and (rel_x > 0.16 or ":" not in region.text):
+            return True
+
+        return False
+
+    @staticmethod
+    def _compact_text(value: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", value.lower())
+
+    @classmethod
+    def _is_static_form_text(cls, normalized: str) -> bool:
+        if not normalized:
+            return False
+        if normalized in STATIC_FORM_TEXT:
+            return True
+        return any(token in normalized for token in STATIC_FORM_TEXT if len(token) >= 8)
 
     @staticmethod
     def _expanded_bbox(bbox: list[int], img_w: int, img_h: int) -> list[int]:
@@ -645,6 +728,8 @@ class MedicalOCREngine:
                 else self.MODEL_INFO["model_name"]
             ),
         }
+        if pipeline == "hybrid":
+            model_info["custom_recognizer_regions"] = self._last_hybrid_custom_reads
 
         result = OCRResult(
             file_name=Path(image_path).name,
