@@ -172,6 +172,24 @@ OCR_API_URL=http://127.0.0.1:8000/ocr
 OCR_USE_MOCK=false
 ```
 
+For the developer-provided custom medical OCR backend, see `backend/medical-ocr/README.md`. When it is running locally, set:
+
+```env
+OCR_API_URL=http://127.0.0.1:8081/ocr
+OCR_API_KEY=local-test-key
+OCR_USE_MOCK=false
+```
+
+The custom medical backend can also return PaddleOCR-style review artifacts with:
+
+```text
+POST /ocr?include_markdown=true&include_visualization=true
+```
+
+That response includes Markdown plus a base64 PNG overlay of detected OCR boxes.
+
+The Digitize File page uses those extras when available. After OCR finishes, it opens an editable Under Five Clinic Record review modal with patient details, EPI/vaccine fields, and the Findings / Chief Complaint table. Saving still stores the corrected text used by existing search/dashboard screens, and it also stores the edited `clinicRecord` object for future structured views.
+
 For Cloud Run, Secret Manager, and Firebase App Hosting OCR deployment details, see `docs/ocr-deployment/README.md`.
 
 For a full MVP handover guide with feature descriptions, important files, data flows, deployment notes, and troubleshooting, see `docs/mvp-handover/README.md`.

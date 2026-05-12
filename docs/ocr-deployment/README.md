@@ -345,11 +345,29 @@ The PaddleOCR FastAPI service lives in:
 backend/ocr
 ```
 
+A developer-provided custom medical OCR candidate also lives in:
+
+```text
+backend/medical-ocr
+```
+
+Deploy `backend/medical-ocr` as a separate Cloud Run service first, then switch `OCR_API_URL` only after its `/ocr` endpoint has been tested with real records. This backend prefers the real PaddleOCR PP-OCRv5 server detection/recognition pipeline and falls back to the custom medical recognizer if PaddleOCR is unavailable.
+
+For local or demo review, the custom service can return PaddleOCR-style extras:
+
+```text
+POST /ocr?include_markdown=true&include_visualization=true
+```
+
+This adds a Markdown table and a base64 PNG overlay with numbered OCR boxes. Keep visualization disabled for normal production calls unless the UI needs to display the overlay, because the image payload is much larger than text-only OCR.
+
+The Next.js Digitize File page requests these extras for the editable clinic-record review modal. If the active OCR backend does not return `clinicRecord` or `visualization`, the page falls back to text-only review.
+
 Deploy it from the repository root:
 
 ```powershell
-gcloud run deploy digivax-ocr `
-  --source .\backend\ocr `
+gcloud run deploy digivax-medical-ocr `
+  --source .\backend\medical-ocr `
   --region asia-southeast1 `
   --allow-unauthenticated `
   --memory 4Gi `

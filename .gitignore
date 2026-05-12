@@ -5,6 +5,8 @@
 /.python
 /python-*-amd64.exe
 /backend/ocr/.venv
+/backend/medical-ocr/.venv
+.medical-ocr-local.pid
 /.pnp
 .pnp.*
 .yarn/*
@@ -40,6 +42,7 @@ firebase-debug.log
 firebase-debug.*.log
 backend/ocr/*.log
 backend/ocr/demo-ocr-smoke.png
+backend/medical-ocr/*.log
 auth-users.json
 
 # env files (can opt-in for committing if needed)

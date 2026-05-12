@@ -56,6 +56,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
     sourceFileName: input.sourceFileName || "",
     sourceFileType: input.sourceFileType || "",
     sourceStoragePath: input.sourceStoragePath || "",
+    clinicRecord: input.clinicRecord || null,
     searchKeywords: parsed.searchKeywords,
     createdBy: user.uid,
     createdByName: profile.name || profile.email,
@@ -181,6 +182,7 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
     sourceFileName: getString(data.sourceFileName),
     sourceFileType: getString(data.sourceFileType),
     sourceStoragePath: getString(data.sourceStoragePath),
+    clinicRecord: isRecordObject(data.clinicRecord) ? data.clinicRecord : undefined,
     searchKeywords: Array.isArray(data.searchKeywords)
       ? data.searchKeywords.filter((value): value is string => typeof value === "string")
       : [],
@@ -193,6 +195,10 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
 
 function getString(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function isRecordObject(value: unknown): value is VaccinationRecordDocument["clinicRecord"] {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function formatTimestamp(date: Date | null) {

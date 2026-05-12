@@ -1,3 +1,5 @@
+import type { ClinicRecordDraft } from "@/types/clinic-record";
+
 export interface VaccinationRecord {
   id: string;
   patientName: string;
@@ -22,6 +24,7 @@ export interface VaccinationRecordDocument {
   sourceFileName?: string;
   sourceFileType?: string;
   sourceStoragePath?: string;
+  clinicRecord?: ClinicRecordDraft;
   searchKeywords: string[];
   createdBy: string;
   createdByName: string;
@@ -35,4 +38,5 @@ export interface NewVaccinationRecordInput {
   sourceFileName?: string;
   sourceFileType?: string;
   sourceStoragePath?: string;
+  clinicRecord?: ClinicRecordDraft;
 }

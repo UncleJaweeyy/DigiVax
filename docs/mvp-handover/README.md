@@ -67,6 +67,7 @@ components/                  Shared UI, layout, auth, and dashboard components
 lib/                         Firebase clients, helpers, parsers, session utilities
 types/                       Shared TypeScript types
 backend/ocr/                 FastAPI PaddleOCR backend for Cloud Run
+backend/medical-ocr/         Developer-provided custom PP-OCRv5 medical OCR backend
 docs/ocr-deployment/         OCR and deployment operations notes
 docs/mvp-handover/           This handover document
 firebase.json                Firebase deploy target configuration
@@ -96,7 +97,15 @@ BHW dashboard. Shows record counts and recent vaccination records from Firestore
 
 `app/(features)/digitalize/page.tsx`
 
-Digitize File page. Lets staff upload a JPG, PNG, JPEG, or PDF, sends it to OCR, displays extracted text, allows manual correction, uploads the source file, and saves the reviewed record.
+Digitize File page. Lets staff upload a JPG, PNG, JPEG, or PDF, sends it to OCR, displays extracted text, allows manual correction, uploads the source file, and saves the reviewed record. When the custom medical OCR backend returns PP-OCRv5-style extras, this page opens an editable Under Five Clinic Record review modal with patient details, EPI/vaccine fields, and the Findings / Chief Complaint table.
+
+`components/records/ClinicRecordReviewModal.tsx`
+
+Editable clinic-format review modal used by the Digitize File page. It displays the OCR overlay image when available and converts table edits back into corrected OCR text.
+
+`lib/records/clinic-format.ts`
+
+Converts between structured clinic records and the corrected text blob used by existing search/dashboard parsing.
 
 `app/(features)/search/page.tsx`
 
@@ -267,9 +276,9 @@ Main workflow:
 2. The page sends the file to `processScan()`.
 3. `processScan()` calls the OCR backend through `OCR_API_URL`.
 4. Extracted OCR text is shown in an editable review box.
-5. Staff can correct the text.
+5. If structured medical OCR is available, staff can correct the clinic-format modal table.
 6. The original file uploads to Firebase Storage.
-7. The reviewed text and parsed fields save to Firestore.
+7. The reviewed text, parsed fields, and optional `clinicRecord` object save to Firestore.
 8. An audit log is written.
 
 ### OCR Server Action
@@ -331,6 +340,10 @@ Detailed OCR deployment notes:
 docs/ocr-deployment/README.md
 ```
 
+`backend/medical-ocr/`
+
+Custom developer-provided medical OCR package. It prefers PaddleOCR's PP-OCRv5 server detector/recognizer for cleaner text boxes and uses the included custom Paddle inference artifacts as a fallback. Its DigiVax-compatible `/ocr` endpoint returns text, structured clinic-record fields, Markdown, and an optional overlay image. Keep it deployed separately from `backend/ocr` until it has been tested with real records and you are ready to switch `OCR_API_URL`.
+
 ## Vaccination Record Storage
 
 ### Firestore Collection
@@ -351,6 +364,11 @@ Expected fields:
   "recordYear": "2023",
   "rawText": "Original OCR output",
   "correctedText": "User-reviewed OCR output",
+  "clinicRecord": {
+    "patient": {},
+    "vaccines": [],
+    "visits": []
+  },
   "status": "Pending Review",
   "sourceFileName": "scan.png",
   "sourceFileType": "image/png",

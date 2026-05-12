@@ -1,0 +1,12 @@
+# The Dockerfile installs PaddlePaddle 3.2.0 separately from the Paddle CPU index.
+# Install the same PaddlePaddle version before this file for non-Docker local runs.
+
+opencv-python-headless>=4.9.0
+numpy>=1.24.0,<2.0
+paddleocr==3.3.2
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+gunicorn>=21.2.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.0
+pyyaml>=6.0

@@ -1,16 +1,22 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Upload, Edit3, Check } from "lucide-react";
+import { Upload, Edit3, Check, Table2 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import ClinicRecordReviewModal from "@/components/records/ClinicRecordReviewModal";
 
-// Import from the correct folder location
 import {
   processScan,
   ScanStatus,
 } from "@/actions/records/scan-actions";
 import { createVaccinationRecord } from "@/lib/firebase/records";
 import { uploadVaccinationRecordFile } from "@/lib/firebase/storage";
+import {
+  clinicRecordFromText,
+  clinicRecordToText,
+  normalizeClinicRecordDraft,
+} from "@/lib/records/clinic-format";
+import type { ClinicRecordDraft, OcrVisualization } from "@/types/clinic-record";
 
 export default function DigitalizePage() {
   const [status, setStatus] = useState<ScanStatus>("idle");
@@ -18,26 +24,46 @@ export default function DigitalizePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [clinicDraft, setClinicDraft] = useState<ClinicRecordDraft | null>(null);
+  const [ocrMarkdown, setOcrMarkdown] = useState("");
+  const [ocrVisualization, setOcrVisualization] = useState<OcrVisualization | undefined>();
+  const [sourcePreviewUrl, setSourcePreviewUrl] = useState("");
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // File Processing
   const handleFileProcessing = async (file: File) => {
     setStatus("processing");
     setTextPreview("Initializing OCR Engine...");
     setSelectedFile(file);
+    setClinicDraft(null);
+    setOcrMarkdown("");
+    setOcrVisualization(undefined);
+    setSourcePreviewUrl((currentUrl) => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      return file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+    });
+    setIsReviewOpen(false);
 
     try {
-      // FIX: Wrap file in FormData so it can be sent to the server
       const formData = new FormData();
       formData.append("file", file);
 
       const result = await processScan(formData);
 
       if (result.success && result.text) {
+        const nextDraft = normalizeClinicRecordDraft(
+          result.clinicRecord || clinicRecordFromText(result.text),
+        );
+        const nextText = clinicRecordToText(nextDraft) || result.text;
+
         setStatus("done");
-        setTextPreview(result.text);
+        setClinicDraft(nextDraft);
+        setOcrMarkdown(result.markdown || "");
+        setOcrVisualization(result.visualization);
+        setTextPreview(nextText);
+        setIsReviewOpen(true);
       } else {
         setStatus("error");
         setTextPreview(result.error || "Error processing file.");
@@ -62,6 +88,11 @@ export default function DigitalizePage() {
     }
   };
 
+  const handleClinicDraftChange = (draft: ClinicRecordDraft) => {
+    setClinicDraft(draft);
+    setTextPreview(clinicRecordToText(draft));
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
 
@@ -76,6 +107,7 @@ export default function DigitalizePage() {
         sourceFileName: selectedFile?.name,
         sourceFileType: selectedFile?.type,
         sourceStoragePath,
+        clinicRecord: clinicDraft || undefined,
       });
 
       alert(`Saved record ${recordId}`);
@@ -83,6 +115,14 @@ export default function DigitalizePage() {
       setStatus("idle");
       setIsEditing(false);
       setSelectedFile(null);
+      setClinicDraft(null);
+      setOcrMarkdown("");
+      setOcrVisualization(undefined);
+      setSourcePreviewUrl((currentUrl) => {
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        return "";
+      });
+      setIsReviewOpen(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to save record.");
@@ -91,7 +131,6 @@ export default function DigitalizePage() {
     }
   };
 
-  // Status Styling Logic
   const getStatusStyle = () => {
     switch (status) {
       case "idle": return "bg-blue-100 text-blue-600";
@@ -183,19 +222,30 @@ export default function DigitalizePage() {
             />
           </div>
 
-          <div className="flex justify-between mt-8">
-            <Button
-              variant="outline"
-              onClick={toggleEditMode}
-              disabled={status !== "done"}
-              className={`flex items-center gap-2 transition-all ${isEditing ? "bg-blue-50 border-blue-600 text-blue-600" : ""}`}
-            >
-              {isEditing ? (
-                <><Check size={18} /> Finish Editing</>
-              ) : (
-                <><Edit3 size={18} /> Edit Extracted Text</>
-              )}
-            </Button>
+          <div className="flex flex-wrap justify-between gap-3 mt-8">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={() => clinicDraft && setIsReviewOpen(true)}
+                disabled={status !== "done" || !clinicDraft}
+                className="flex items-center gap-2"
+              >
+                <Table2 size={18} /> Review Clinic Table
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={toggleEditMode}
+                disabled={status !== "done"}
+                className={`flex items-center gap-2 transition-all ${isEditing ? "bg-blue-50 border-blue-600 text-blue-600" : ""}`}
+              >
+                {isEditing ? (
+                  <><Check size={18} /> Finish Editing</>
+                ) : (
+                  <><Edit3 size={18} /> Edit Extracted Text</>
+                )}
+              </Button>
+            </div>
 
             <Button
               className="px-10"
@@ -207,6 +257,19 @@ export default function DigitalizePage() {
           </div>
         </div>
       </div>
+
+      {isReviewOpen && clinicDraft && (
+        <ClinicRecordReviewModal
+          draft={clinicDraft}
+          visualization={ocrVisualization}
+          sourcePreviewUrl={sourcePreviewUrl}
+          markdown={ocrMarkdown}
+          isSaving={isSaving}
+          onChange={handleClinicDraftChange}
+          onClose={() => setIsReviewOpen(false)}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 }

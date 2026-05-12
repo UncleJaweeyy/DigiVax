@@ -3,6 +3,7 @@
 "use server";
 
 import { MOCK_EXTRACTED_TEXT } from "@/lib/records/mock-data";
+import type { ClinicRecordDraft, OcrVisualization } from "@/types/clinic-record";
 
 export type ScanStatus = "idle" | "processing" | "done" | "error";
 
@@ -11,6 +12,9 @@ export interface ScanResult {
   text?: string;
   confidence?: number;
   fields?: Record<string, string>;
+  clinicRecord?: ClinicRecordDraft;
+  markdown?: string;
+  visualization?: OcrVisualization;
   error?: string;
 }
 
@@ -19,6 +23,9 @@ interface OcrApiResponse {
   extractedText?: string;
   confidence?: number;
   fields?: Record<string, string>;
+  clinicRecord?: ClinicRecordDraft;
+  markdown?: string;
+  visualization?: OcrVisualization;
   error?: string;
   message?: string;
 }
@@ -56,7 +63,8 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
 
     // The OCR API owns image preprocessing and model execution; this action normalizes its response.
     const headers = ocrApiKey ? { Authorization: `Bearer ${ocrApiKey}` } : undefined;
-    const response = await fetch(ocrApiUrl, {
+    const endpoint = withOcrReviewParams(ocrApiUrl);
+    const response = await fetch(endpoint, {
       method: "POST",
       headers,
       body: requestBody,
@@ -82,11 +90,26 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
       text,
       confidence: data.confidence,
       fields: data.fields,
+      clinicRecord: data.clinicRecord,
+      markdown: data.markdown,
+      visualization: data.visualization,
     };
   } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "An unexpected error occurred.",
     };
+  }
+}
+
+function withOcrReviewParams(url: string) {
+  try {
+    const endpoint = new URL(url);
+    endpoint.searchParams.set("include_markdown", "true");
+    endpoint.searchParams.set("include_visualization", "true");
+    return endpoint.toString();
+  } catch {
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}include_markdown=true&include_visualization=true`;
   }
 }
