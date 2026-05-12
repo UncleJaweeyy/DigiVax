@@ -173,3 +173,5 @@ OCR_USE_MOCK=false
 ```
 
 For Cloud Run, Secret Manager, and Firebase App Hosting OCR deployment details, see `docs/ocr-deployment/README.md`.
+
+For a full MVP handover guide with feature descriptions, important files, data flows, deployment notes, and troubleshooting, see `docs/mvp-handover/README.md`.
