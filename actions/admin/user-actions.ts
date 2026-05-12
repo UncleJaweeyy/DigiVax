@@ -4,6 +4,7 @@ import { FieldValue, type DocumentData } from "firebase-admin/firestore";
 
 import type { StaffMember, UserRole, UserStatus } from "@/app/types/user";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { assertAdmin } from "@/lib/firebase/admin-access";
 import { writeAuditLog } from "@/lib/firebase/audit-log";
 
 type CreateStaffAccountInput = Pick<StaffMember, "name" | "email" | "role"> & {
@@ -189,27 +190,6 @@ export const resetUserPassword = async (idToken: string, userId: string) => {
     message: "Temporary password generated successfully.",
   };
 };
-
-async function assertAdmin(idToken: string) {
-  if (!idToken) {
-    throw new Error("Admin session is missing.");
-  }
-
-  const decodedToken = await adminAuth.verifyIdToken(idToken);
-  const snapshot = await adminDb.collection(usersCollection).doc(decodedToken.uid).get();
-
-  if (!snapshot.exists) {
-    throw new Error("Your account does not have a DigiVax profile.");
-  }
-
-  const profile = snapshot.data();
-
-  if (profile?.role !== "admin" || profile.status !== "Active") {
-    throw new Error("Admin access is required.");
-  }
-
-  return decodedToken.uid;
-}
 
 function mapStaffMember(id: string, data: DocumentData): StaffMember {
   return {

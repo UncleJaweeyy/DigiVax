@@ -1,6 +1,6 @@
 import "server-only";
 
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminAuth, adminDb, getFirebaseAdminError } from "@/lib/firebase/admin";
 
 const usersCollection = "users";
 
@@ -33,15 +33,19 @@ async function getVerifiedProfile(idToken: string) {
     throw new Error("Session is missing.");
   }
 
-  const decodedToken = await adminAuth.verifyIdToken(idToken);
-  const snapshot = await adminDb.collection(usersCollection).doc(decodedToken.uid).get();
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const snapshot = await adminDb.collection(usersCollection).doc(decodedToken.uid).get();
 
-  if (!snapshot.exists) {
-    throw new Error("Your account does not have a DigiVax profile.");
+    if (!snapshot.exists) {
+      throw new Error("Your account does not have a DigiVax profile.");
+    }
+
+    return {
+      uid: decodedToken.uid,
+      profile: snapshot.data(),
+    };
+  } catch (error) {
+    throw getFirebaseAdminError(error);
   }
-
-  return {
-    uid: decodedToken.uid,
-    profile: snapshot.data(),
-  };
 }

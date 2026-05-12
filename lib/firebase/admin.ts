@@ -5,6 +5,12 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
+const localAdminCredentialMessage =
+  "Firebase Admin credentials are not configured for this local server. " +
+  "Add FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY to .env.local, set " +
+  "GOOGLE_APPLICATION_CREDENTIALS to a Firebase service account JSON path, " +
+  "or run `gcloud auth application-default login`. Restart `npm run dev` after changing credentials.";
+
 function getAdminApp() {
   const existingApp = getApps()[0];
 
@@ -60,3 +66,20 @@ export const adminApp = getAdminApp();
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
 export const adminStorage = getStorage(adminApp);
+
+export function getFirebaseAdminError(error: unknown) {
+  if (isMissingDefaultCredentialError(error)) {
+    return new Error(localAdminCredentialMessage);
+  }
+
+  return error;
+}
+
+function isMissingDefaultCredentialError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  return (
+    message.includes("Could not load the default credentials") ||
+    message.includes("Unable to detect a Project Id")
+  );
+}
