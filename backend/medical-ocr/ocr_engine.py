@@ -284,8 +284,8 @@ class MedicalOCREngine:
             )
             self._paddleocr_available = True
             logger.info("PaddleOCR PP-OCRv5 pipeline loaded")
-        except ImportError:
-            logger.warning("paddleocr not installed; falling back to custom medical recognizer")
+        except ImportError as exc:
+            logger.warning("PaddleOCR import failed (%s); falling back to custom medical recognizer", exc)
         except Exception as exc:
             logger.warning("PaddleOCR pipeline load failed (%s); falling back to custom medical recognizer", exc)
 
