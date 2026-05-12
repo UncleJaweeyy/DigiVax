@@ -1,8 +1,10 @@
 import {
   EmailAuthProvider,
+  browserSessionPersistence,
   reauthenticateWithCredential,
   signInWithEmailAndPassword,
   signOut,
+  setPersistence,
   updatePassword as updateFirebasePassword,
 } from "firebase/auth";
 
@@ -12,6 +14,7 @@ import { getUserProfile, updateUserPasswordState } from "@/lib/firebase/users";
 
 export const loginUser = async (email: string, password: string) => {
   try {
+    await setPersistence(auth, browserSessionPersistence);
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const profile = await getUserProfile(credential.user.uid);
 
