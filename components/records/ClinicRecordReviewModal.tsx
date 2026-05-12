@@ -17,19 +17,6 @@ interface ClinicRecordReviewModalProps {
   onSave: () => void;
 }
 
-const patientFields: Array<{ key: keyof ClinicPatientDetails; label: string }> = [
-  { key: "name", label: "Name" },
-  { key: "age", label: "Age" },
-  { key: "dateOfBirth", label: "Date of Birth" },
-  { key: "address", label: "Address" },
-  { key: "motherName", label: "Mother's Name" },
-  { key: "fatherName", label: "Father's Name" },
-  { key: "nutritionalStatus", label: "Nutritional Status" },
-  { key: "birthWeight", label: "Birth Weight" },
-  { key: "epiStatus", label: "EPI Status" },
-  { key: "feedingType", label: "Type of Feeding" },
-];
-
 const visitFields: Array<{ key: keyof Omit<ClinicVisitRow, "id">; label: string; width: string; multiline?: boolean }> = [
   { key: "date", label: "DATE", width: "min-w-32" },
   { key: "wt", label: "WT", width: "min-w-24" },
@@ -39,6 +26,25 @@ const visitFields: Array<{ key: keyof Omit<ClinicVisitRow, "id">; label: string;
   { key: "otherCc", label: "OTHER CC", width: "min-w-40", multiline: true },
   { key: "management", label: "MANAGEMENT", width: "min-w-48", multiline: true },
 ];
+
+interface ClinicFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function ClinicField({ label, value, onChange }: ClinicFieldProps) {
+  return (
+    <label className="grid grid-cols-[8.5rem_1fr] items-center gap-2">
+      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-9 w-full border-0 border-b border-slate-300 bg-transparent px-1 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-0"
+      />
+    </label>
+  );
+}
 
 export default function ClinicRecordReviewModal({
   draft,
@@ -65,12 +71,6 @@ export default function ClinicRecordReviewModal({
       ...draft,
       visits: draft.visits.map((visit) => visit.id === rowId ? { ...visit, [key]: value } : visit),
     });
-  };
-
-  const updateVisitAt = (index: number, key: keyof Omit<ClinicVisitRow, "id">, value: string) => {
-    const visit = draft.visits[index];
-    if (!visit) return;
-    updateVisit(visit.id, key, value);
   };
 
   const addVisit = () => {
@@ -115,7 +115,7 @@ export default function ClinicRecordReviewModal({
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.92fr_1.08fr]">
           <div className="min-h-0 border-b border-slate-200 bg-slate-100 lg:border-b-0 lg:border-r">
             <div className="flex h-full flex-col">
               <div className="border-b border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
@@ -129,12 +129,6 @@ export default function ClinicRecordReviewModal({
                       alt="Uploaded clinic record"
                       className="block w-full rounded-lg border border-slate-200 bg-white object-contain"
                     />
-                    <DocumentEditOverlay
-                      draft={draft}
-                      onPatientChange={updatePatient}
-                      onVisitChange={updateVisitAt}
-                      onVaccinesChange={updateVaccines}
-                    />
                   </div>
                 ) : (
                   <pre className="min-h-96 whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-4 text-xs text-slate-600">
@@ -146,26 +140,26 @@ export default function ClinicRecordReviewModal({
           </div>
 
           <div className="min-h-0 overflow-auto">
-            <div className="space-y-6 p-5">
-              <section>
-                <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-500">Patient Details</h3>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {patientFields.map((field) => (
-                    <label key={field.key} className="block">
-                      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                        {field.label}
-                      </span>
-                      <input
-                        value={draft.patient[field.key]}
-                        onChange={(event) => updatePatient(field.key, event.target.value)}
-                        className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-                  ))}
+            <div className="space-y-5 p-5">
+              <section className="rounded-lg border border-slate-200 bg-white">
+                <div className="border-b border-slate-200 px-4 py-3">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-600">Patient Details</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 p-4 md:grid-cols-2">
+                  <ClinicField label="Name" value={draft.patient.name} onChange={(value) => updatePatient("name", value)} />
+                  <ClinicField label="Nutritional Status" value={draft.patient.nutritionalStatus} onChange={(value) => updatePatient("nutritionalStatus", value)} />
+                  <ClinicField label="Age" value={draft.patient.age} onChange={(value) => updatePatient("age", value)} />
+                  <ClinicField label="Birth Weight" value={draft.patient.birthWeight} onChange={(value) => updatePatient("birthWeight", value)} />
+                  <ClinicField label="Date of Birth" value={draft.patient.dateOfBirth} onChange={(value) => updatePatient("dateOfBirth", value)} />
+                  <ClinicField label="EPI Status" value={draft.patient.epiStatus} onChange={(value) => updatePatient("epiStatus", value)} />
+                  <ClinicField label="Address" value={draft.patient.address} onChange={(value) => updatePatient("address", value)} />
+                  <ClinicField label="Type of Feeding" value={draft.patient.feedingType} onChange={(value) => updatePatient("feedingType", value)} />
+                  <ClinicField label="Mother's Name" value={draft.patient.motherName} onChange={(value) => updatePatient("motherName", value)} />
+                  <ClinicField label="Father's Name" value={draft.patient.fatherName} onChange={(value) => updatePatient("fatherName", value)} />
                 </div>
               </section>
 
-              <section>
+              <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <label className="block">
                   <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
                     EPI / Vaccines
@@ -178,8 +172,8 @@ export default function ClinicRecordReviewModal({
                 </label>
               </section>
 
-              <section>
-                <div className="mb-3 flex items-center justify-between gap-3">
+              <section className="rounded-lg border border-slate-200 bg-white">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">
                     Findings / Chief Complaint
                   </h3>
@@ -188,7 +182,7 @@ export default function ClinicRecordReviewModal({
                   </Button>
                 </div>
 
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left text-sm">
                     <thead className="bg-slate-100 text-xs font-black uppercase tracking-wide text-slate-600">
                       <tr>
@@ -204,7 +198,7 @@ export default function ClinicRecordReviewModal({
                       {draft.visits.map((visit) => (
                         <tr key={visit.id} className="align-top">
                           {visitFields.map((field) => (
-                            <td key={field.key} className="border-t border-slate-100 p-1">
+                            <td key={field.key} className="border-t border-slate-100 p-1.5">
                               {field.multiline ? (
                                 <textarea
                                   value={visit[field.key]}
@@ -250,82 +244,5 @@ export default function ClinicRecordReviewModal({
         </div>
       </div>
     </div>
-  );
-}
-
-interface DocumentEditOverlayProps {
-  draft: ClinicRecordDraft;
-  onPatientChange: (key: keyof ClinicPatientDetails, value: string) => void;
-  onVisitChange: (index: number, key: keyof Omit<ClinicVisitRow, "id">, value: string) => void;
-  onVaccinesChange: (value: string) => void;
-}
-
-function DocumentEditOverlay({
-  draft,
-  onPatientChange,
-  onVisitChange,
-  onVaccinesChange,
-}: DocumentEditOverlayProps) {
-  return (
-    <div className="absolute inset-0 text-[10px] sm:text-xs">
-      <OverlayInput left="22%" top="16.5%" width="25%" value={draft.patient.name} onChange={(value) => onPatientChange("name", value)} />
-      <OverlayInput left="24%" top="18.6%" width="16%" value={draft.patient.age} onChange={(value) => onPatientChange("age", value)} />
-      <OverlayInput left="26%" top="20.7%" width="18%" value={draft.patient.dateOfBirth} onChange={(value) => onPatientChange("dateOfBirth", value)} />
-      <OverlayInput left="24%" top="22.8%" width="27%" value={draft.patient.address} onChange={(value) => onPatientChange("address", value)} />
-      <OverlayInput left="29%" top="24.9%" width="24%" value={draft.patient.motherName} onChange={(value) => onPatientChange("motherName", value)} />
-      <OverlayInput left="29%" top="27%" width="24%" value={draft.patient.fatherName} onChange={(value) => onPatientChange("fatherName", value)} />
-
-      <OverlayInput left="67%" top="16.7%" width="17%" value={draft.patient.nutritionalStatus} onChange={(value) => onPatientChange("nutritionalStatus", value)} />
-      <OverlayInput left="67%" top="18.8%" width="17%" value={draft.patient.birthWeight} onChange={(value) => onPatientChange("birthWeight", value)} />
-      <OverlayInput left="67%" top="20.9%" width="21%" value={draft.patient.epiStatus} onChange={(value) => onPatientChange("epiStatus", value)} />
-      <OverlayInput left="62%" top="30%" width="28%" value={draft.patient.feedingType} onChange={(value) => onPatientChange("feedingType", value)} />
-      <OverlayTextarea left="69%" top="36.8%" width="14%" height="27%" value={draft.vaccines.join("\n")} onChange={onVaccinesChange} />
-
-      {draft.visits.slice(0, 5).map((visit, index) => {
-        const top = `${38 + index * 7.3}%`;
-        return (
-          <div key={visit.id}>
-            <OverlayInput left="11%" top={top} width="11%" value={visit.date} onChange={(value) => onVisitChange(index, "date", value)} />
-            <OverlayInput left="23%" top={top} width="8%" value={visit.wt} onChange={(value) => onVisitChange(index, "wt", value)} />
-            <OverlayInput left="31%" top={top} width="7%" value={visit.vs} onChange={(value) => onVisitChange(index, "vs", value)} />
-            <OverlayTextarea left="39%" top={top} width="15%" height="5.8%" value={visit.episode} onChange={(value) => onVisitChange(index, "episode", value)} />
-            <OverlayTextarea left="55%" top={top} width="15%" height="5.8%" value={visit.dangerSigns} onChange={(value) => onVisitChange(index, "dangerSigns", value)} />
-            <OverlayTextarea left="70%" top={top} width="13%" height="6.8%" value={visit.otherCc} onChange={(value) => onVisitChange(index, "otherCc", value)} />
-            <OverlayTextarea left="84%" top={top} width="12%" height="6.8%" value={visit.management} onChange={(value) => onVisitChange(index, "management", value)} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-interface OverlayControlProps {
-  left: string;
-  top: string;
-  width: string;
-  height?: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function OverlayInput({ left, top, width, height = "2.1%", value, onChange }: OverlayControlProps) {
-  return (
-    <input
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      style={{ left, top, width, height }}
-      className="absolute rounded-sm border border-blue-400/40 bg-white/80 px-1 leading-none text-slate-950 shadow-sm outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-200"
-    />
-  );
-}
-
-function OverlayTextarea({ left, top, width, height = "5%", value, onChange }: OverlayControlProps) {
-  return (
-    <textarea
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      style={{ left, top, width, height }}
-      className="absolute resize-none rounded-sm border border-blue-400/40 bg-white/80 px-1 py-0.5 leading-tight text-slate-950 shadow-sm outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-200"
-    />
   );
 }

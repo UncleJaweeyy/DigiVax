@@ -342,7 +342,7 @@ docs/ocr-deployment/README.md
 
 `backend/medical-ocr/`
 
-Custom developer-provided medical OCR package. It defaults to a hybrid OCR pipeline: PaddleOCR's PP-OCRv5 server detector locates text boxes, then the included custom fine-tuned Paddle recognizer re-reads detected crops where useful. Its DigiVax-compatible `/ocr` endpoint returns text, structured clinic-record fields, Markdown, and an optional overlay image. Keep it deployed separately from `backend/ocr` until it has been tested with real records and you are ready to switch `OCR_API_URL`.
+Custom developer-provided medical OCR package. It defaults to pure PaddleOCR PP-OCRv5 server detection/recognition so baseline accuracy can be evaluated first. It can optionally run a hybrid mode where PP-OCRv5 locates text boxes and the included custom fine-tuned Paddle recognizer re-reads detected crops. Its DigiVax-compatible `/ocr` endpoint returns text, structured clinic-record fields, Markdown, and an optional overlay image. Keep it deployed separately from `backend/ocr` until it has been tested with real records and you are ready to switch `OCR_API_URL`.
 
 ## Vaccination Record Storage
 

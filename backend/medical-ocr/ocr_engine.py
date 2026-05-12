@@ -215,7 +215,7 @@ class MedicalOCREngine:
         self._paddle_available = False
         self._paddleocr_engine = None
         self._paddleocr_available = False
-        self.pipeline = os.getenv("MEDICAL_OCR_PIPELINE", "hybrid").strip().lower()
+        self.pipeline = os.getenv("MEDICAL_OCR_PIPELINE", "paddleocr").strip().lower()
 
         if self.pipeline != "custom":
             self._try_load_paddleocr()

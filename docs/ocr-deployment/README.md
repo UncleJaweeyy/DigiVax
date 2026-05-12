@@ -351,7 +351,7 @@ A developer-provided custom medical OCR candidate also lives in:
 backend/medical-ocr
 ```
 
-Deploy `backend/medical-ocr` as a separate Cloud Run service first, then switch `OCR_API_URL` only after its `/ocr` endpoint has been tested with real records. This backend defaults to a hybrid pipeline: PaddleOCR PP-OCRv5 server detection locates text boxes, then the custom fine-tuned medical recognizer re-reads detected crops where useful.
+Deploy `backend/medical-ocr` as a separate Cloud Run service first, then switch `OCR_API_URL` only after its `/ocr` endpoint has been tested with real records. This backend defaults to pure PaddleOCR PP-OCRv5 server detection/recognition for accuracy evaluation. Set `MEDICAL_OCR_PIPELINE=hybrid` only when you want to test PP-OCRv5 detection with the custom fine-tuned recognizer.
 
 For local or demo review, the custom service can return PaddleOCR-style extras:
 

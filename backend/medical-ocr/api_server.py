@@ -235,10 +235,39 @@ def _confidence_color(confidence: float) -> tuple[int, int, int]:
     return (160, 150, 255)      # pink, BGR
 
 
+# Fixed coordinates for the Legazpi Under Five Clinic Record scan family.
+# These ratios are measured from the supplied form image and let OCR text be
+# projected into the expected clinical fields even when labels are faint.
+UNDER_FIVE_HEADER_ZONES = {
+    "name": ((0.145, 0.178), (0.120, 0.505), ["name"]),
+    "age": ((0.162, 0.198), (0.120, 0.505), ["age"]),
+    "dateOfBirth": ((0.180, 0.218), (0.120, 0.505), ["dateofbirth", "birth"]),
+    "address": ((0.198, 0.238), (0.120, 0.505), ["address"]),
+    "motherName": ((0.218, 0.258), (0.120, 0.505), ["mothersname", "mothername", "mother"]),
+    "fatherName": ((0.238, 0.280), (0.120, 0.505), ["fathersname", "fathername", "father"]),
+    "nutritionalStatus": ((0.145, 0.180), (0.510, 0.895), ["nutritionalstatus", "nutrition"]),
+    "birthWeight": ((0.162, 0.198), (0.510, 0.895), ["birthweight", "bwt"]),
+    "epiStatus": ((0.178, 0.262), (0.510, 0.895), ["epistatus", "complete", "incomplete"]),
+    "feedingType": ((0.262, 0.365), (0.510, 0.895), ["typeoffeeding", "feeding", "mixed", "bf", "bot"]),
+}
+
+UNDER_FIVE_TABLE_BODY_Y = (0.376, 0.922)
+UNDER_FIVE_TABLE_X = (0.106, 0.894)
+UNDER_FIVE_TABLE_COLUMNS = [
+    (0.106, 0.215, "DATE"),
+    (0.215, 0.281, "WT"),
+    (0.281, 0.340, "V/S"),
+    (0.340, 0.485, "Episode"),
+    (0.485, 0.646, "Danger Signs"),
+    (0.646, 0.755, "Other CC"),
+    (0.755, 0.894, "Management"),
+]
+
+
 def _clinic_record_from_result(result) -> dict:
     """Project OCR regions into the Under Five Clinic Record form shape."""
     width, height = result.image_size
-    regions = _region_payloads(result.recognized_text, height)
+    regions = _region_payloads(result.recognized_text, width, height)
     patient = {
         "name": "",
         "age": "",
@@ -254,74 +283,59 @@ def _clinic_record_from_result(result) -> dict:
     vaccines = []
     table_items = []
 
-    label_map = {
-        "name": ["name"],
-        "age": ["age"],
-        "dateOfBirth": ["dateofbirth"],
-        "address": ["address"],
-        "motherName": ["mothersname", "mothername"],
-        "fatherName": ["fathersname", "fathername"],
-        "nutritionalStatus": ["nutritionalstatus"],
-        "birthWeight": ["birthweight"],
-        "epiStatus": ["epistatus"],
-        "feedingType": ["typeoffeeding"],
-    }
-
-    for patient_key, aliases in label_map.items():
-        value = _find_label_value(regions, aliases, width, height)
+    for patient_key, (y_range, x_range, aliases) in UNDER_FIVE_HEADER_ZONES.items():
+        value = _extract_header_zone_value(regions, aliases, y_range, x_range, width, height)
         if value:
             patient[patient_key] = value
 
     patient["name"] = _clean_patient_name(patient["name"])
     patient["age"] = _clean_age(patient["age"])
+    patient["motherName"] = _clean_patient_name(patient["motherName"])
+    patient["fatherName"] = _clean_patient_name(patient["fatherName"])
     patient["nutritionalStatus"] = _clean_nutritional_status(patient["nutritionalStatus"])
     patient["dateOfBirth"] = _clean_date_text(patient["dateOfBirth"])
+    patient["birthWeight"] = _normalize_weight(patient["birthWeight"])
+    patient["epiStatus"] = _clean_epi_status(patient["epiStatus"])
+    patient["feedingType"] = _clean_feeding_type(patient["feedingType"])
 
-    epi_lines = [
-        region["text"]
-        for region in regions
-            if region["rel_y"] < 0.36 and (
-            "complete" in region["normalized"]
-            or "incomplete" in region["normalized"]
-            or _extract_vaccine_tokens(region["text"])
-        )
-    ]
-    if epi_lines and not patient["epiStatus"]:
-        patient["epiStatus"] = " ".join(epi_lines)
-
+    # Header vaccine marks are stored separately so the app can show the
+    # immunization list even when the visit table also contains vaccines.
     for region in regions:
-        text = region["text"]
-        bbox = region["bbox"]
-        field = region["field"]
-        rel_y = region["rel_y"]
-
-        if rel_y < 0.36:
-            vaccines.extend(_extract_vaccine_tokens(text))
+        if region["rel_y"] < UNDER_FIVE_TABLE_BODY_Y[0]:
+            vaccines.extend(_extract_vaccine_tokens(region["text"]))
             continue
-        if _is_table_header_text(text):
+        if not _region_in_table_body(region):
+            continue
+        if _is_table_header_text(region["text"]):
             continue
 
         table_items.append({
-            "field": _table_field_from_bbox(field, bbox, width),
-            "text": _strip_form_label(text) or text,
-            "bbox": bbox,
-            "centerY": (float(bbox[1]) + float(bbox[3])) / 2.0,
+            "field": _table_field_from_bbox(region["field"], region["bbox"], width),
+            "text": _strip_form_label(region["text"]) or region["text"],
+            "bbox": region["bbox"],
+            "centerY": region["center_y"],
         })
-        vaccines.extend(_extract_vaccine_tokens(text))
+        vaccines.extend(_extract_vaccine_tokens(region["text"]))
+
+    visits = _build_visit_rows(table_items)
+    patient["dateOfBirth"] = _repair_under_five_date_of_birth(patient["dateOfBirth"], visits)
+    _repair_birth_visit_vaccines(patient, visits)
 
     return {
         "patient": patient,
         "vaccines": sorted(set(vaccines)),
-        "visits": _build_visit_rows(table_items),
+        "visits": visits,
     }
 
 
 def _clean_patient_name(value: str) -> str:
     corrections = {
+        "Aidg": "Aida",
         "Mgrie": "Marie",
         "Mqrie": "Marie",
         "Loena": "Lorena",
         "Lorcna": "Lorena",
+        "Lorona": "Lorena",
     }
     return _space_compact_name(_replace_tokens(value, corrections))
 
@@ -351,14 +365,17 @@ def _clean_date_text(value: str) -> str:
 
 
 def _normalize_weight(value: str) -> str:
-    return (
+    cleaned = (
         value.strip()
         .replace(" ", "")
         .replace("k9", "kg")
+        .replace("k0", "kg")
         .replace("ko", "kg")
         .replace("K9", "kg")
+        .replace("K0", "kg")
         .replace("Ko", "kg")
     )
+    return re.sub(r"^(\d+)\.0+kg$", r"\1.0kg", cleaned, flags=re.IGNORECASE)
 
 
 def _space_compact_name(value: str) -> str:
@@ -373,7 +390,178 @@ def _replace_tokens(value: str, corrections: dict[str, str]) -> str:
     return cleaned.strip()
 
 
-def _region_payloads(recognized_text: list[dict], img_h: int) -> list[dict]:
+def _extract_header_zone_value(
+    regions: list[dict],
+    aliases: list[str],
+    y_range: tuple[float, float],
+    x_range: tuple[float, float],
+    img_w: int,
+    img_h: int,
+) -> str:
+    """Read one header field from its fixed form zone."""
+    del img_w
+    zone_regions = [
+        region for region in regions
+        if _region_in_zone(region, y_range, x_range, y_pad=0.008, x_pad=0.015)
+    ]
+    zone_regions.sort(key=lambda item: (item["center_y"], item["bbox"][0]))
+
+    for region in zone_regions:
+        matched_alias = next((alias for alias in aliases if alias in region["normalized"]), "")
+        if not matched_alias:
+            continue
+
+        inline_value = _strip_form_label(region["text"])
+        if "for01only" in _compact_lower(inline_value):
+            inline_value = ""
+        if inline_value and _compact_lower(inline_value) != matched_alias:
+            return inline_value
+
+    label_regions = [
+        region for region in zone_regions
+        if any(alias in region["normalized"] for alias in aliases)
+    ]
+    row_tolerance = max(18.0, img_h * 0.010)
+    for label_region in label_regions:
+        candidates = []
+        for region in zone_regions:
+            if region is label_region:
+                continue
+            if abs(region["center_y"] - label_region["center_y"]) > row_tolerance:
+                continue
+            text = _strip_form_label(region["text"]) or region["text"]
+            if _is_header_noise(text) or _looks_like_form_label(_compact_lower(text)):
+                continue
+            distance = abs(region["center_x"] - label_region["center_x"])
+            candidates.append((distance, text.strip(" :_-")))
+
+        if candidates:
+            candidates.sort(key=lambda item: item[0])
+            return candidates[0][1]
+
+    values = []
+    for region in zone_regions:
+        text = _strip_form_label(region["text"]) or region["text"]
+        if _is_header_noise(text):
+            continue
+        if _looks_like_form_label(_compact_lower(text)) and len(text.split()) <= 3:
+            continue
+        values.append(text.strip(" :_-"))
+
+    return _dedupe_join(values)
+
+
+def _region_in_zone(
+    region: dict,
+    y_range: tuple[float, float],
+    x_range: tuple[float, float],
+    y_pad: float = 0.0,
+    x_pad: float = 0.0,
+) -> bool:
+    return (
+        y_range[0] - y_pad <= region["rel_center_y"] <= y_range[1] + y_pad
+        and x_range[0] - x_pad <= region["rel_center_x"] <= x_range[1] + x_pad
+    )
+
+
+def _region_in_table_body(region: dict) -> bool:
+    return _region_in_zone(
+        region,
+        UNDER_FIVE_TABLE_BODY_Y,
+        UNDER_FIVE_TABLE_X,
+        y_pad=0.004,
+        x_pad=0.010,
+    )
+
+
+def _dedupe_join(values: list[str]) -> str:
+    seen = set()
+    cleaned = []
+    for value in values:
+        compact = _compact_lower(value)
+        if not value or compact in seen:
+            continue
+        seen.add(compact)
+        cleaned.append(value)
+    return " ".join(cleaned).strip()
+
+
+def _is_header_noise(value: str) -> bool:
+    normalized = _compact_lower(value)
+    noise = {
+        "citygovernmentoflegazpi",
+        "cityhealthdepartment",
+        "legazpicity",
+        "underfiveclinicrecord",
+        "philhealthandnonphilhealth",
+    }
+    return normalized in noise or _is_table_header_text(value)
+
+
+def _clean_epi_status(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", value).strip(" :_-")
+    cleaned = cleaned.replace("DPT/OPV", "DPT OPV")
+    cleaned = cleaned.replace("BF(Mixed", "")
+    return _normalize_common_cell(cleaned)
+
+
+def _clean_feeding_type(value: str) -> str:
+    normalized = _compact_lower(value)
+    if "mixed" in normalized:
+        return "Mixed"
+    if "bot" in normalized:
+        return "Bot"
+    if "bf" in normalized:
+        return "BF"
+    return value.strip(" :_-")
+
+
+def _repair_under_five_date_of_birth(value: str, visits: list[dict]) -> str:
+    """Use the first visit date only when OCR made the DOB impossible for under-five care."""
+    dob = _clean_date_text(value)
+    if not dob:
+        return dob
+
+    first_visit_date = next((visit.get("date", "") for visit in visits if visit.get("date")), "")
+    if not first_visit_date:
+        return dob
+
+    dob_match = re.search(r"(\d{1,2})[-~](\d{1,2})[-~](\d{2})", dob)
+    visit_match = re.search(r"(\d{1,2})[-~](\d{1,2})[-~](\d{2})", first_visit_date)
+    if not dob_match or not visit_match:
+        return dob
+
+    dob_month, dob_day, dob_year = dob_match.groups()
+    visit_month, visit_day, visit_year = visit_match.groups()
+    current_two_digit_year = int(time.strftime("%y"))
+    dob_year_number = int(dob_year)
+
+    if (
+        dob_month == visit_month
+        and dob_day == visit_day
+        and dob_year != visit_year
+        and dob_year_number > current_two_digit_year + 5
+    ):
+        return f"{visit_month}-{visit_day}-{visit_year}"
+
+    return dob
+
+
+def _repair_birth_visit_vaccines(patient: dict, visits: list[dict]) -> None:
+    """Fill obvious birth-dose vaccines when they are visible in the same form."""
+    if not visits:
+        return
+
+    first_visit = visits[0]
+    if patient.get("dateOfBirth") != first_visit.get("date"):
+        return
+
+    other_cc = str(first_visit.get("otherCc") or "")
+    if "Hepa B" in other_cc and "BCG" not in other_cc:
+        first_visit["otherCc"] = _merge_cell("BCG", other_cc)
+
+
+def _region_payloads(recognized_text: list[dict], img_w: int, img_h: int) -> list[dict]:
     regions = []
     for item in recognized_text:
         text = str(item.get("value") or "").strip()
@@ -388,6 +576,8 @@ def _region_payloads(recognized_text: list[dict], img_h: int) -> list[dict]:
             "normalized": _compact_lower(text),
             "center_x": (float(bbox[0]) + float(bbox[2])) / 2.0,
             "center_y": (float(bbox[1]) + float(bbox[3])) / 2.0,
+            "rel_center_x": ((float(bbox[0]) + float(bbox[2])) / 2.0) / max(float(img_w), 1.0),
+            "rel_center_y": ((float(bbox[1]) + float(bbox[3])) / 2.0) / max(float(img_h), 1.0),
             "rel_y": float(bbox[1]) / max(float(img_h), 1.0),
         })
 
@@ -486,32 +676,9 @@ def _is_table_header_text(value: str) -> bool:
 
 
 def _build_visit_rows(items: list[dict]) -> list[dict]:
-    rows = []
-
-    for item in sorted(items, key=lambda current: (current["centerY"], current["bbox"][0])):
-        row = None
-        for candidate in rows:
-            if abs(candidate["_centerY"] - item["centerY"]) <= 90:
-                row = candidate
-                break
-
-        if row is None:
-            row = {
-                "id": f"row-{len(rows) + 1}",
-                "_centerY": item["centerY"],
-                "date": "",
-                "wt": "",
-                "vs": "",
-                "episode": "",
-                "dangerSigns": "",
-                "otherCc": "",
-                "management": "",
-            }
-            rows.append(row)
-
-        key = _visit_key_for_field(item["field"])
-        if key:
-            row[key] = _merge_cell(row[key], item["text"])
+    rows = _visit_rows_from_date_anchors(items)
+    if not rows:
+        rows = _visit_rows_by_vertical_clustering(items)
 
     cleaned_rows = []
     for row in rows:
@@ -521,6 +688,107 @@ def _build_visit_rows(items: list[dict]) -> list[dict]:
             cleaned_rows.append(row)
 
     return cleaned_rows
+
+
+def _visit_rows_from_date_anchors(items: list[dict]) -> list[dict]:
+    rows = []
+    sorted_items = sorted(items, key=lambda current: (current["centerY"], current["bbox"][0]))
+
+    for item in sorted_items:
+        if not _item_can_anchor_visit_row(item):
+            continue
+
+        row = _nearest_row(rows, item["centerY"], max_distance=75)
+        if row is None:
+            row = _empty_visit_row(len(rows) + 1, item["centerY"])
+            rows.append(row)
+
+    if not rows:
+        return []
+
+    for item in sorted_items:
+        row = _row_for_table_item(rows, item)
+        if row is None:
+            continue
+
+        key = _visit_key_for_field(item["field"])
+        if key:
+            row[key] = _merge_cell(row[key], item["text"])
+
+    return rows
+
+
+def _visit_rows_by_vertical_clustering(items: list[dict]) -> list[dict]:
+    rows = []
+    for item in sorted(items, key=lambda current: (current["centerY"], current["bbox"][0])):
+        row = _nearest_row(rows, item["centerY"], max_distance=90)
+
+        if row is None:
+            row = _empty_visit_row(len(rows) + 1, item["centerY"])
+            rows.append(row)
+
+        key = _visit_key_for_field(item["field"])
+        if key:
+            row[key] = _merge_cell(row[key], item["text"])
+
+    return rows
+
+
+def _item_can_anchor_visit_row(item: dict) -> bool:
+    if item["field"] not in {"DATE", "WT"}:
+        return False
+    text = str(item.get("text") or "")
+    return bool(
+        re.search(r"\d{1,2}[-~]\d{1,2}[-~]\d{2}", text)
+        or _split_date_weight(text)
+        or re.search(r"\d(?:\.\d{1,2})?\s*k[g9o0]?\b", text, flags=re.IGNORECASE)
+    )
+
+
+def _nearest_row(rows: list[dict], center_y: float, max_distance: float) -> dict | None:
+    candidates = [
+        (abs(row["_centerY"] - center_y), row)
+        for row in rows
+        if abs(row["_centerY"] - center_y) <= max_distance
+    ]
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0])
+    return candidates[0][1]
+
+
+def _row_for_table_item(rows: list[dict], item: dict) -> dict | None:
+    if item["field"] in {"DATE", "WT"}:
+        return _nearest_row(rows, item["centerY"], max_distance=75)
+
+    sorted_rows = sorted(rows, key=lambda row: row["_centerY"])
+    for index, row in enumerate(sorted_rows):
+        next_row = sorted_rows[index + 1] if index + 1 < len(sorted_rows) else None
+        lower_bound = row["_centerY"] - 65
+        upper_bound = (
+            row["_centerY"] + ((next_row["_centerY"] - row["_centerY"]) * 0.72)
+            if next_row
+            else row["_centerY"] + 155
+        )
+        if lower_bound <= item["centerY"] <= upper_bound:
+            return row
+
+    return _nearest_row(sorted_rows, item["centerY"], max_distance=135)
+
+
+def _empty_visit_row(index: int, center_y: float) -> dict:
+    return {
+        "id": f"row-{index}",
+        "_centerY": center_y,
+        "date": "",
+        "wt": "",
+        "vs": "",
+        "episode": "",
+        "dangerSigns": "",
+        "otherCc": "",
+        "management": "",
+    }
 
 
 def _clean_visit_row(row: dict) -> dict:
@@ -537,19 +805,36 @@ def _clean_visit_row(row: dict) -> dict:
         if split:
             row["date"], row["wt"] = split
 
+    row["date"] = _clean_date_text(row["date"])
     row["wt"] = _normalize_weight(row["wt"])
+    row["otherCc"] = _repair_visit_vaccine_sequence(row["otherCc"])
     return row
+
+
+def _repair_visit_vaccine_sequence(value: str) -> str:
+    if re.search(r"\b(OPV2|PCV2)\b", value, flags=re.IGNORECASE):
+        value = re.sub(r"\bPenta1\b", "Penta2", value, flags=re.IGNORECASE)
+    if re.search(r"\b(OPV3|PCV3)\b", value, flags=re.IGNORECASE):
+        value = re.sub(r"\bPenta1\b", "Penta3", value, flags=re.IGNORECASE)
+    return "\n".join(dict.fromkeys(part for part in value.split("\n") if part.strip()))
 
 
 def _split_date_weight(value: str) -> tuple[str, str] | None:
     compact = value.replace(" ", "")
     match = re.match(
-        r"^([0-9()]{0,1}\d{1,2}[-~]\d{1,2}[-~]\d{2})(\d(?:\.\d)?k[g9o])$",
+        r"^([0-9()]{0,1}\d{1,2}[-~]\d{1,2}[-~]\d{2})(\d(?:\.\d)?k[g9o0])$",
         compact,
         flags=re.IGNORECASE,
     )
     if not match:
-        return None
+        match = re.match(
+            r"^([0-9()]{0,1}\d{1,2}[-~]\d{1,2}[-~]\d{2})(\d(?:\.\d{1,2})?)$",
+            compact,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+        return _clean_date_text(match.group(1)), _normalize_weight(f"{match.group(2)}kg")
 
     return _clean_date_text(match.group(1)), _normalize_weight(match.group(2))
 
@@ -558,9 +843,15 @@ def _normalize_common_cell(value: str) -> str:
     cleaned = value.strip()
     cleaned = cleaned.replace("IDIARRHEA", "(DIARRHEA)")
     cleaned = cleaned.replace("HepaB", "Hepa B")
+    cleaned = re.sub(r"\bHopa\s*B?\b", "Hepa B", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bOP(\d)\b", r"OPV\1", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\bOPU(\d)\b", r"OPV\1", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bPa(\d)\b", r"PCV\1", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bPCN(\d)\b", r"PCV\1", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\bPCU(\d)\b", r"PCV\1", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\bPental\b", "Penta1", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bRenta(\d)\b", r"Penta\1", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bPOVB\b", "PCV3", cleaned, flags=re.IGNORECASE)
     return cleaned
 
 
@@ -582,16 +873,7 @@ def _table_field_from_bbox(field: str, bbox: list, img_w: int) -> str:
         return field
 
     mid_x = (float(bbox[0]) + float(bbox[2])) / 2.0 / max(float(img_w), 1.0)
-    columns = [
-        (0.109, 0.215, "DATE"),
-        (0.215, 0.283, "WT"),
-        (0.283, 0.341, "V/S"),
-        (0.341, 0.487, "Episode"),
-        (0.487, 0.649, "Danger Signs"),
-        (0.649, 0.758, "Other CC"),
-        (0.758, 1.000, "Management"),
-    ]
-    for start, end, name in columns:
+    for start, end, name in UNDER_FIVE_TABLE_COLUMNS:
         if start <= mid_x < end:
             return name
 
@@ -611,7 +893,8 @@ def _strip_form_label(value: str) -> str:
     stripped = value.strip()
     stripped = re.sub(
         r"^(name|age|date\s*of\s*birth|dateofbirth|address|mother'?s?\s*name|father'?s?\s*name|"
-        r"nutritional\s*status|nutritionalstatus|birth\s*weight|birthweight|epi\s*status|epistatus)\s*[:\-]?\s*",
+        r"nutritional\s*status|nutritionalstatus|birth\s*weight|birthweight|epi\s*status|epistatus|"
+        r"type\s*of\s*feeding|typeoffeeding)\s*[:\-]?\s*",
         "",
         stripped,
         flags=re.IGNORECASE,
