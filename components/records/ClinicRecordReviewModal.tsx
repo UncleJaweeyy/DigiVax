@@ -67,6 +67,12 @@ export default function ClinicRecordReviewModal({
     });
   };
 
+  const updateVisitAt = (index: number, key: keyof Omit<ClinicVisitRow, "id">, value: string) => {
+    const visit = draft.visits[index];
+    if (!visit) return;
+    updateVisit(visit.id, key, value);
+  };
+
   const addVisit = () => {
     onChange({
       ...draft,
@@ -88,6 +94,8 @@ export default function ClinicRecordReviewModal({
       vaccines: value.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean),
     });
   };
+
+  const imageUrl = sourcePreviewUrl || visualization?.dataUrl;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
@@ -114,18 +122,20 @@ export default function ClinicRecordReviewModal({
                 OCR Overlay
               </div>
               <div className="min-h-0 flex-1 overflow-auto p-4">
-                {visualization?.dataUrl ? (
-                  <img
-                    src={visualization.dataUrl}
-                    alt="OCR overlay with detected text boxes"
-                    className="mx-auto max-h-none w-full max-w-3xl rounded-lg border border-slate-200 bg-white object-contain"
-                  />
-                ) : sourcePreviewUrl ? (
-                  <img
-                    src={sourcePreviewUrl}
-                    alt="Uploaded clinic record"
-                    className="mx-auto max-h-none w-full max-w-3xl rounded-lg border border-slate-200 bg-white object-contain"
-                  />
+                {imageUrl ? (
+                  <div className="relative mx-auto w-full max-w-3xl">
+                    <img
+                      src={imageUrl}
+                      alt="Uploaded clinic record"
+                      className="block w-full rounded-lg border border-slate-200 bg-white object-contain"
+                    />
+                    <DocumentEditOverlay
+                      draft={draft}
+                      onPatientChange={updatePatient}
+                      onVisitChange={updateVisitAt}
+                      onVaccinesChange={updateVaccines}
+                    />
+                  </div>
                 ) : (
                   <pre className="min-h-96 whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-4 text-xs text-slate-600">
                     {markdown || "The OCR response did not include an overlay image."}
@@ -240,5 +250,82 @@ export default function ClinicRecordReviewModal({
         </div>
       </div>
     </div>
+  );
+}
+
+interface DocumentEditOverlayProps {
+  draft: ClinicRecordDraft;
+  onPatientChange: (key: keyof ClinicPatientDetails, value: string) => void;
+  onVisitChange: (index: number, key: keyof Omit<ClinicVisitRow, "id">, value: string) => void;
+  onVaccinesChange: (value: string) => void;
+}
+
+function DocumentEditOverlay({
+  draft,
+  onPatientChange,
+  onVisitChange,
+  onVaccinesChange,
+}: DocumentEditOverlayProps) {
+  return (
+    <div className="absolute inset-0 text-[10px] sm:text-xs">
+      <OverlayInput left="22%" top="16.5%" width="25%" value={draft.patient.name} onChange={(value) => onPatientChange("name", value)} />
+      <OverlayInput left="24%" top="18.6%" width="16%" value={draft.patient.age} onChange={(value) => onPatientChange("age", value)} />
+      <OverlayInput left="26%" top="20.7%" width="18%" value={draft.patient.dateOfBirth} onChange={(value) => onPatientChange("dateOfBirth", value)} />
+      <OverlayInput left="24%" top="22.8%" width="27%" value={draft.patient.address} onChange={(value) => onPatientChange("address", value)} />
+      <OverlayInput left="29%" top="24.9%" width="24%" value={draft.patient.motherName} onChange={(value) => onPatientChange("motherName", value)} />
+      <OverlayInput left="29%" top="27%" width="24%" value={draft.patient.fatherName} onChange={(value) => onPatientChange("fatherName", value)} />
+
+      <OverlayInput left="67%" top="16.7%" width="17%" value={draft.patient.nutritionalStatus} onChange={(value) => onPatientChange("nutritionalStatus", value)} />
+      <OverlayInput left="67%" top="18.8%" width="17%" value={draft.patient.birthWeight} onChange={(value) => onPatientChange("birthWeight", value)} />
+      <OverlayInput left="67%" top="20.9%" width="21%" value={draft.patient.epiStatus} onChange={(value) => onPatientChange("epiStatus", value)} />
+      <OverlayInput left="62%" top="30%" width="28%" value={draft.patient.feedingType} onChange={(value) => onPatientChange("feedingType", value)} />
+      <OverlayTextarea left="69%" top="36.8%" width="14%" height="27%" value={draft.vaccines.join("\n")} onChange={onVaccinesChange} />
+
+      {draft.visits.slice(0, 5).map((visit, index) => {
+        const top = `${38 + index * 7.3}%`;
+        return (
+          <div key={visit.id}>
+            <OverlayInput left="11%" top={top} width="11%" value={visit.date} onChange={(value) => onVisitChange(index, "date", value)} />
+            <OverlayInput left="23%" top={top} width="8%" value={visit.wt} onChange={(value) => onVisitChange(index, "wt", value)} />
+            <OverlayInput left="31%" top={top} width="7%" value={visit.vs} onChange={(value) => onVisitChange(index, "vs", value)} />
+            <OverlayTextarea left="39%" top={top} width="15%" height="5.8%" value={visit.episode} onChange={(value) => onVisitChange(index, "episode", value)} />
+            <OverlayTextarea left="55%" top={top} width="15%" height="5.8%" value={visit.dangerSigns} onChange={(value) => onVisitChange(index, "dangerSigns", value)} />
+            <OverlayTextarea left="70%" top={top} width="13%" height="6.8%" value={visit.otherCc} onChange={(value) => onVisitChange(index, "otherCc", value)} />
+            <OverlayTextarea left="84%" top={top} width="12%" height="6.8%" value={visit.management} onChange={(value) => onVisitChange(index, "management", value)} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+interface OverlayControlProps {
+  left: string;
+  top: string;
+  width: string;
+  height?: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function OverlayInput({ left, top, width, height = "2.1%", value, onChange }: OverlayControlProps) {
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      style={{ left, top, width, height }}
+      className="absolute rounded-sm border border-blue-400/40 bg-white/80 px-1 leading-none text-slate-950 shadow-sm outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-200"
+    />
+  );
+}
+
+function OverlayTextarea({ left, top, width, height = "5%", value, onChange }: OverlayControlProps) {
+  return (
+    <textarea
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      style={{ left, top, width, height }}
+      className="absolute resize-none rounded-sm border border-blue-400/40 bg-white/80 px-1 py-0.5 leading-tight text-slate-950 shadow-sm outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-200"
+    />
   );
 }

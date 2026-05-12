@@ -188,7 +188,7 @@ POST /ocr?include_markdown=true&include_visualization=true
 
 That response includes Markdown plus a base64 PNG overlay of detected OCR boxes.
 
-The Digitize File page uses those extras when available. After OCR finishes, it opens an editable Under Five Clinic Record review modal with patient details, EPI/vaccine fields, and the Findings / Chief Complaint table. Saving still stores the corrected text used by existing search/dashboard screens, and it also stores the edited `clinicRecord` object for future structured views.
+The Digitize File page uses those extras when available. After OCR finishes, it opens an editable Under Five Clinic Record review modal with patient details, EPI/vaccine fields, and the Findings / Chief Complaint table. The modal also overlays editable controls directly on the scanned form image for a Baidu AI Studio-style review flow. Saving still stores the corrected text used by existing search/dashboard screens, and it also stores the edited `clinicRecord` object for future structured views.
 
 For Cloud Run, Secret Manager, and Firebase App Hosting OCR deployment details, see `docs/ocr-deployment/README.md`.
 

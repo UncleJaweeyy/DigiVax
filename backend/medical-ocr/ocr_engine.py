@@ -347,6 +347,78 @@ class MedicalOCREngine:
 
         return sorted(regions, key=lambda item: (item.bbox[1] // 20, item.bbox[0]))
 
+    def _extract_hybrid_regions(self, result: Any, img_bgr: np.ndarray, img_h: int, img_w: int) -> list[TextRegion]:
+        """Use PP-OCRv5 boxes, then re-read crops with the fine-tuned medical recognizer."""
+        paddle_regions = self._extract_paddleocr_regions(result, img_h, img_w)
+        hybrid_regions = []
+
+        for region in paddle_regions:
+            x1, y1, x2, y2 = self._expanded_bbox(region.bbox, img_w, img_h)
+            crop = img_bgr[y1:y2, x1:x2]
+            if crop.size == 0:
+                hybrid_regions.append(region)
+                continue
+
+            custom_text, custom_conf = self._recognize_region(crop)
+            text = self._choose_hybrid_text(
+                paddle_text=region.text,
+                paddle_conf=region.confidence,
+                custom_text=custom_text,
+                custom_conf=custom_conf,
+                bbox=region.bbox,
+                img_h=img_h,
+            )
+            confidence = custom_conf if text == custom_text else region.confidence
+
+            hybrid_regions.append(TextRegion(
+                bbox=region.bbox,
+                text=text,
+                confidence=round(float(confidence), 4),
+                field=self._assign_field(text, region.bbox, img_h, img_w),
+            ))
+
+        return sorted(hybrid_regions, key=lambda item: (item.bbox[1] // 20, item.bbox[0]))
+
+    @staticmethod
+    def _expanded_bbox(bbox: list[int], img_w: int, img_h: int) -> list[int]:
+        x1, y1, x2, y2 = bbox
+        return [
+            max(0, x1 - 3),
+            max(0, y1 - 3),
+            min(img_w, x2 + 3),
+            min(img_h, y2 + 3),
+        ]
+
+    @staticmethod
+    def _choose_hybrid_text(
+        paddle_text: str,
+        paddle_conf: float,
+        custom_text: str,
+        custom_conf: float,
+        bbox: list[int],
+        img_h: int,
+    ) -> str:
+        custom_text = custom_text.strip()
+        if not custom_text or custom_conf < 0.84:
+            return paddle_text
+
+        rel_y = bbox[1] / max(float(img_h), 1.0)
+        compact_custom = custom_text.replace(" ", "")
+        compact_paddle = paddle_text.replace(" ", "")
+
+        if rel_y < 0.36:
+            if ":" in custom_text:
+                return custom_text
+            if any(char.isdigit() for char in custom_text) and custom_conf >= 0.90:
+                return custom_text
+            if paddle_conf < 0.90 and len(compact_custom) >= max(3, len(compact_paddle) - 3):
+                return custom_text
+
+        if rel_y >= 0.36 and custom_conf >= 0.90:
+            return custom_text
+
+        return paddle_text
+
     @staticmethod
     def _normalize_paddleocr_box(raw_box: Any, img_w: int, img_h: int) -> list[int]:
         if hasattr(raw_box, "tolist"):
@@ -564,8 +636,14 @@ class MedicalOCREngine:
         model_info = {
             **self.MODEL_INFO,
             "pipeline": pipeline,
-            "detector": os.getenv("PADDLEOCR_DET_MODEL", "PP-OCRv5_server_det") if pipeline == "paddleocr" else "OpenCV contour detector",
-            "recognizer": os.getenv("PADDLEOCR_REC_MODEL", "PP-OCRv5_server_rec") if pipeline == "paddleocr" else self.MODEL_INFO["model_name"],
+            "detector": os.getenv("PADDLEOCR_DET_MODEL", "PP-OCRv5_server_det") if pipeline in {"paddleocr", "hybrid"} else "OpenCV contour detector",
+            "recognizer": (
+                f"{os.getenv('PADDLEOCR_REC_MODEL', 'PP-OCRv5_server_rec')} + {self.MODEL_INFO['model_name']}"
+                if pipeline == "hybrid"
+                else os.getenv("PADDLEOCR_REC_MODEL", "PP-OCRv5_server_rec")
+                if pipeline == "paddleocr"
+                else self.MODEL_INFO["model_name"]
+            ),
         }
 
         result = OCRResult(

@@ -101,7 +101,7 @@ Digitize File page. Lets staff upload a JPG, PNG, JPEG, or PDF, sends it to OCR,
 
 `components/records/ClinicRecordReviewModal.tsx`
 
-Editable clinic-format review modal used by the Digitize File page. It displays the OCR overlay image when available and converts table edits back into corrected OCR text.
+Editable clinic-format review modal used by the Digitize File page. It displays the OCR/source image with direct editable controls over the form, keeps the structured fields synchronized, and converts table edits back into corrected OCR text.
 
 `lib/records/clinic-format.ts`
 
@@ -342,7 +342,7 @@ docs/ocr-deployment/README.md
 
 `backend/medical-ocr/`
 
-Custom developer-provided medical OCR package. It prefers PaddleOCR's PP-OCRv5 server detector/recognizer for cleaner text boxes and uses the included custom Paddle inference artifacts as a fallback. Its DigiVax-compatible `/ocr` endpoint returns text, structured clinic-record fields, Markdown, and an optional overlay image. Keep it deployed separately from `backend/ocr` until it has been tested with real records and you are ready to switch `OCR_API_URL`.
+Custom developer-provided medical OCR package. It defaults to a hybrid OCR pipeline: PaddleOCR's PP-OCRv5 server detector locates text boxes, then the included custom fine-tuned Paddle recognizer re-reads detected crops where useful. Its DigiVax-compatible `/ocr` endpoint returns text, structured clinic-record fields, Markdown, and an optional overlay image. Keep it deployed separately from `backend/ocr` until it has been tested with real records and you are ready to switch `OCR_API_URL`.
 
 ## Vaccination Record Storage
 

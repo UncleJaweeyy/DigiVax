@@ -126,12 +126,18 @@ python -m pip install paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/pac
 python -m pip install -r requirements.txt
 ```
 
-The default local and Docker path uses PaddleOCR's stronger PP-OCRv5 server detector/recognizer:
+The default local and Docker path uses a hybrid pipeline: PaddleOCR's stronger PP-OCRv5 server detector locates text, then the custom fine-tuned medical recognizer re-reads detected crops where it is more confident.
+
+```powershell
+$env:MEDICAL_OCR_PIPELINE="hybrid"
+$env:PADDLEOCR_DET_MODEL="PP-OCRv5_server_det"
+$env:PADDLEOCR_REC_MODEL="PP-OCRv5_server_rec"
+```
+
+To use PaddleOCR's recognition output without the custom recognizer:
 
 ```powershell
 $env:MEDICAL_OCR_PIPELINE="paddleocr"
-$env:PADDLEOCR_DET_MODEL="PP-OCRv5_server_det"
-$env:PADDLEOCR_REC_MODEL="PP-OCRv5_server_rec"
 ```
 
 For a lighter Cloud Run demo, switch to mobile models:
@@ -208,7 +214,7 @@ firebase deploy --only apphosting:digivax --project digivax-54700
 ## Notes
 
 - The Dockerfile installs `paddlepaddle==3.2.0` because the exported model is PIR-format.
-- The default runtime path is `MEDICAL_OCR_PIPELINE=paddleocr`, using `PP-OCRv5_server_det` and `PP-OCRv5_server_rec`.
+- The default runtime path is `MEDICAL_OCR_PIPELINE=hybrid`, using `PP-OCRv5_server_det` for detection and the custom fine-tuned recognizer on detected crops.
 - The server models are more accurate but heavier; increase Cloud Run memory/CPU if cold starts or inference time become an issue.
 - Set `MEDICAL_OCR_PIPELINE=custom` to force the older OpenCV-region detector plus custom recognition model fallback.
 - The Cloud Run service is public for reachability, but inference endpoints require `OCR_API_KEY` when configured.

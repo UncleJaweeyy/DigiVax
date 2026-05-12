@@ -323,11 +323,12 @@ def _clean_patient_name(value: str) -> str:
         "Loena": "Lorena",
         "Lorcna": "Lorena",
     }
-    return _replace_tokens(value, corrections)
+    return _space_compact_name(_replace_tokens(value, corrections))
 
 
 def _clean_age(value: str) -> str:
     cleaned = value.strip(" )(:_-")
+    cleaned = re.sub(r"(?<=\d)(?=[A-Za-z])", " ", cleaned)
     if cleaned.lower() == "month":
         return "1 month"
     return cleaned
@@ -338,12 +339,31 @@ def _clean_nutritional_status(value: str) -> str:
         "Noomal": "Normal",
         "Nomai": "Normal",
         "Nomal": "Normal",
+        "Nomas": "Normal",
     }
     return _replace_tokens(value, corrections)
 
 
 def _clean_date_text(value: str) -> str:
-    return value.strip(" )(:_")
+    cleaned = value.strip(" )(:_")
+    cleaned = cleaned.strip("(").replace("~", "-")
+    return cleaned
+
+
+def _normalize_weight(value: str) -> str:
+    return (
+        value.strip()
+        .replace(" ", "")
+        .replace("k9", "kg")
+        .replace("ko", "kg")
+        .replace("K9", "kg")
+        .replace("Ko", "kg")
+    )
+
+
+def _space_compact_name(value: str) -> str:
+    spaced = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", value)
+    return re.sub(r"\s+", " ", spaced).strip()
 
 
 def _replace_tokens(value: str, corrections: dict[str, str]) -> str:
@@ -496,10 +516,52 @@ def _build_visit_rows(items: list[dict]) -> list[dict]:
     cleaned_rows = []
     for row in rows:
         row.pop("_centerY", None)
+        row = _clean_visit_row(row)
         if any(value for key, value in row.items() if key != "id"):
             cleaned_rows.append(row)
 
     return cleaned_rows
+
+
+def _clean_visit_row(row: dict) -> dict:
+    for key in ["date", "wt", "episode", "dangerSigns", "otherCc", "management"]:
+        row[key] = _normalize_common_cell(str(row.get(key) or ""))
+
+    if not row["date"] and row["wt"]:
+        split = _split_date_weight(row["wt"])
+        if split:
+            row["date"], row["wt"] = split
+
+    if row["date"] and not row["wt"]:
+        split = _split_date_weight(row["date"])
+        if split:
+            row["date"], row["wt"] = split
+
+    row["wt"] = _normalize_weight(row["wt"])
+    return row
+
+
+def _split_date_weight(value: str) -> tuple[str, str] | None:
+    compact = value.replace(" ", "")
+    match = re.match(
+        r"^([0-9()]{0,1}\d{1,2}[-~]\d{1,2}[-~]\d{2})(\d(?:\.\d)?k[g9o])$",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    return _clean_date_text(match.group(1)), _normalize_weight(match.group(2))
+
+
+def _normalize_common_cell(value: str) -> str:
+    cleaned = value.strip()
+    cleaned = cleaned.replace("IDIARRHEA", "(DIARRHEA)")
+    cleaned = cleaned.replace("HepaB", "Hepa B")
+    cleaned = re.sub(r"\bOPU(\d)\b", r"OPV\1", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bPCU(\d)\b", r"PCV\1", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bPental\b", "Penta1", cleaned, flags=re.IGNORECASE)
+    return cleaned
 
 
 def _visit_key_for_field(field: str) -> str:
