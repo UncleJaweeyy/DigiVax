@@ -268,6 +268,7 @@ def _clinic_record_from_result(result, image_path: str | None = None) -> dict:
     """Project OCR regions into the Under Five Clinic Record form shape."""
     width, height = result.image_size
     regions = _region_payloads(result.recognized_text, width, height)
+    geometry = _detect_under_five_geometry(image_path, width, height)
     checkmarks = _detect_under_five_checkmarks(image_path, width, height) if image_path else {}
     patient = {
         "name": "",
@@ -284,8 +285,32 @@ def _clinic_record_from_result(result, image_path: str | None = None) -> dict:
     vaccines = []
     table_items = []
 
+    label_map = {
+        "name": ["name"],
+        "age": ["age"],
+        "dateOfBirth": ["dateofbirth"],
+        "address": ["address"],
+        "motherName": ["mothersname", "mothername", "mother"],
+        "fatherName": ["fathersname", "fathername", "father"],
+        "nutritionalStatus": ["nutritionalstatus", "nutrition"],
+        "birthWeight": ["birthweight", "bwt"],
+        "epiStatus": ["epistatus"],
+        "feedingType": ["typeoffeeding", "feeding"],
+    }
+
     for patient_key, (y_range, x_range, aliases) in UNDER_FIVE_HEADER_ZONES.items():
-        value = _extract_header_zone_value(regions, aliases, y_range, x_range, width, height)
+        adjusted_y_range = _adjust_header_y_range(y_range, geometry["table_top_y"])
+        value = _find_label_value(
+            regions,
+            label_map.get(patient_key, aliases),
+            width,
+            height,
+            max_rel_y=geometry["table_top_y"],
+        )
+        if not value and patient_key not in {"nutritionalStatus", "birthWeight", "epiStatus", "feedingType"}:
+            value = _extract_header_zone_value(regions, aliases, adjusted_y_range, x_range, width, height)
+            if _is_header_noise(value):
+                value = ""
         if value:
             patient[patient_key] = value
 
@@ -311,15 +336,15 @@ def _clinic_record_from_result(result, image_path: str | None = None) -> dict:
         vaccines.extend(checked_vaccines)
 
     for region in regions:
-        if region["rel_y"] < UNDER_FIVE_TABLE_BODY_Y[0]:
+        if region["rel_center_y"] < geometry["table_body_y"][0]:
             continue
-        if not _region_in_table_body(region):
+        if not _region_in_table_body(region, geometry):
             continue
         if _is_table_header_text(region["text"]):
             continue
 
         table_items.append({
-            "field": _table_field_from_bbox(region["field"], region["bbox"], width),
+            "field": _table_field_from_bbox(region["field"], region["bbox"], width, geometry),
             "text": _strip_form_label(region["text"]) or region["text"],
             "bbox": region["bbox"],
             "centerY": region["center_y"],
@@ -329,7 +354,7 @@ def _clinic_record_from_result(result, image_path: str | None = None) -> dict:
     patient["dateOfBirth"] = _repair_under_five_date_of_birth(patient["dateOfBirth"], visits)
     _repair_birth_visit_vaccines(patient, visits)
     if not vaccines:
-        vaccines = _infer_checked_epi_vaccines(regions, visits)
+        vaccines = _infer_checked_epi_vaccines(regions, visits, geometry)
 
     return {
         "patient": patient,
@@ -347,7 +372,9 @@ def _clean_patient_name(value: str) -> str:
         "Lorcna": "Lorena",
         "Lorona": "Lorena",
     }
-    return _space_compact_name(_replace_tokens(value, corrections))
+    cleaned = re.sub(r"^fathers?[a-z]*\s*:\s*", "", value, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^mothers?[a-z]*\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+    return _space_compact_name(_replace_tokens(cleaned, corrections))
 
 
 def _clean_age(value: str) -> str:
@@ -370,7 +397,7 @@ def _clean_nutritional_status(value: str) -> str:
 
 def _clean_date_text(value: str) -> str:
     cleaned = value.strip(" )(:_")
-    cleaned = cleaned.strip("(").replace("~", "-")
+    cleaned = cleaned.strip("(").replace("~", "-").replace("/", "-")
     return cleaned
 
 
@@ -474,11 +501,178 @@ def _region_in_zone(
     )
 
 
-def _region_in_table_body(region: dict) -> bool:
+def _default_under_five_geometry() -> dict:
+    return {
+        "table_top_y": 0.328,
+        "table_body_y": UNDER_FIVE_TABLE_BODY_Y,
+        "table_x": UNDER_FIVE_TABLE_X,
+        "columns": UNDER_FIVE_TABLE_COLUMNS,
+    }
+
+
+def _detect_under_five_geometry(image_path: str | None, img_w: int, img_h: int) -> dict:
+    """Detect the table grid so differently cropped scans still map to columns."""
+    geometry = _default_under_five_geometry()
+    if not image_path:
+        return geometry
+
+    image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        return geometry
+
+    _, binary = cv2.threshold(
+        image,
+        0,
+        255,
+        cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU,
+    )
+
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(45, img_h // 8)))
+    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=1)
+    vertical_positions = _line_centers_from_mask(
+        vertical_lines,
+        axis="x",
+        min_length=img_h * 0.24,
+        min_position=img_w * 0.02,
+        max_position=img_w * 0.995,
+    )
+
+    if len(vertical_positions) >= 7:
+        boundaries = _select_table_boundaries(vertical_positions, img_w)
+        if len(boundaries) >= 7:
+            geometry["table_x"] = (boundaries[0] / img_w, boundaries[-1] / img_w)
+            geometry["columns"] = _columns_from_boundaries(boundaries, img_w)
+
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (max(80, img_w // 7), 1))
+    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=1)
+    horizontal_positions = _line_centers_from_mask(
+        horizontal_lines,
+        axis="y",
+        min_length=img_w * 0.38,
+        min_position=img_h * 0.25,
+        max_position=img_h * 0.98,
+    )
+
+    table_lines = [position for position in horizontal_positions if position / img_h > 0.25]
+    if table_lines:
+        table_top = table_lines[0]
+        body_candidates = [
+            position for position in table_lines
+            if position > table_top + img_h * 0.032
+        ]
+        table_bottom = table_lines[-1] if table_lines[-1] > table_top else img_h * UNDER_FIVE_TABLE_BODY_Y[1]
+        table_body_top = body_candidates[0] if body_candidates else table_top + img_h * 0.048
+        if table_bottom <= table_body_top + img_h * 0.08:
+            table_bottom = img_h * UNDER_FIVE_TABLE_BODY_Y[1]
+
+        geometry["table_top_y"] = table_top / img_h
+        geometry["table_body_y"] = (
+            min(max(table_body_top / img_h, geometry["table_top_y"]), 0.75),
+            min(max(table_bottom / img_h, table_body_top / img_h), 0.98),
+        )
+
+    return geometry
+
+
+def _line_centers_from_mask(
+    mask: np.ndarray,
+    axis: str,
+    min_length: float,
+    min_position: float,
+    max_position: float,
+) -> list[float]:
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    positions = []
+
+    for contour in contours:
+        x, y, width, height = cv2.boundingRect(contour)
+        if axis == "x":
+            length = height
+            position = x + width / 2.0
+        else:
+            length = width
+            position = y + height / 2.0
+
+        if length < min_length:
+            continue
+        if not (min_position <= position <= max_position):
+            continue
+        positions.append(position)
+
+    return _cluster_line_positions(sorted(positions))
+
+
+def _cluster_line_positions(positions: list[float], tolerance: float = 14.0) -> list[float]:
+    if not positions:
+        return []
+
+    clusters = [[positions[0]]]
+    for position in positions[1:]:
+        if abs(position - clusters[-1][-1]) <= tolerance:
+            clusters[-1].append(position)
+        else:
+            clusters.append([position])
+
+    return [sum(cluster) / len(cluster) for cluster in clusters]
+
+
+def _select_table_boundaries(positions: list[float], img_w: int) -> list[float]:
+    positions = sorted(positions)
+    if len(positions) == 7:
+        gaps = [
+            (positions[index + 1] - positions[index], index)
+            for index in range(len(positions) - 1)
+        ]
+        largest_gap, gap_index = max(gaps, key=lambda item: item[0])
+        if largest_gap > img_w * 0.20:
+            midpoint = (positions[gap_index] + positions[gap_index + 1]) / 2.0
+            positions = positions[:gap_index + 1] + [midpoint] + positions[gap_index + 1:]
+
+    if len(positions) <= 8:
+        return positions
+
+    # Prefer the widest contiguous group of table-like vertical dividers.
+    best_group = positions[:8]
+    best_width = best_group[-1] - best_group[0]
+    for index in range(0, len(positions) - 7):
+        group = positions[index:index + 8]
+        width = group[-1] - group[0]
+        if width > best_width and width > img_w * 0.55:
+            best_group = group
+            best_width = width
+
+    return best_group
+
+
+def _columns_from_boundaries(boundaries: list[float], img_w: int) -> list[tuple[float, float, str]]:
+    labels = ["DATE", "WT", "V/S", "Episode", "Danger Signs", "Other CC", "Management"]
+    columns = []
+
+    usable_boundaries = boundaries[:8]
+    if len(usable_boundaries) < 8:
+        return UNDER_FIVE_TABLE_COLUMNS
+
+    for index, label in enumerate(labels):
+        columns.append((
+            usable_boundaries[index] / img_w,
+            usable_boundaries[index + 1] / img_w,
+            label,
+        ))
+
+    return columns
+
+
+def _adjust_header_y_range(y_range: tuple[float, float], table_top_y: float) -> tuple[float, float]:
+    scale = table_top_y / 0.328 if table_top_y else 1.0
+    scale = min(max(scale, 0.86), 1.12)
+    return y_range[0] * scale, y_range[1] * scale
+
+
+def _region_in_table_body(region: dict, geometry: dict) -> bool:
     return _region_in_zone(
         region,
-        UNDER_FIVE_TABLE_BODY_Y,
-        UNDER_FIVE_TABLE_X,
+        geometry["table_body_y"],
+        geometry["table_x"],
         y_pad=0.004,
         x_pad=0.010,
     )
@@ -538,8 +732,8 @@ def _repair_under_five_date_of_birth(value: str, visits: list[dict]) -> str:
     if not first_visit_date:
         return dob
 
-    dob_match = re.search(r"(\d{1,2})[-~](\d{1,2})[-~](\d{2})", dob)
-    visit_match = re.search(r"(\d{1,2})[-~](\d{1,2})[-~](\d{2})", first_visit_date)
+    dob_match = re.search(r"(\d{1,2})[-~/](\d{1,2})[-~/](\d{2})", dob)
+    visit_match = re.search(r"(\d{1,2})[-~/](\d{1,2})[-~/](\d{2})", first_visit_date)
     if not dob_match or not visit_match:
         return dob
 
@@ -573,19 +767,19 @@ def _repair_birth_visit_vaccines(patient: dict, visits: list[dict]) -> None:
         first_visit["otherCc"] = _merge_cell("BCG", other_cc)
 
 
-def _infer_checked_epi_vaccines(regions: list[dict], visits: list[dict]) -> list[str]:
+def _infer_checked_epi_vaccines(regions: list[dict], visits: list[dict], geometry: dict) -> list[str]:
     """Infer checked vaccine marks from OCR symbols and the birth-dose visit."""
     selected = []
     header_text = " ".join(
         region["text"]
         for region in regions
-        if region["rel_center_y"] < UNDER_FIVE_TABLE_BODY_Y[0]
+        if region["rel_center_y"] < geometry["table_body_y"][0]
     )
 
     first_visit_other_cc = str(visits[0].get("otherCc") or "") if visits else ""
     if "BCG" in first_visit_other_cc:
         selected.append("BCG")
-    if "Hepa B" in first_visit_other_cc or re.search(r"\bhepa\s*b\b", header_text, flags=re.IGNORECASE):
+    if "Hepa B" in first_visit_other_cc or re.search(r"\bhepa\s*b\b|\bhepab\b", header_text, flags=re.IGNORECASE):
         selected.append("Hepa B")
     if re.search(r"[✓✔/∠]\s*OPV|\bOPV\b", header_text, flags=re.IGNORECASE):
         selected.append("OPV")
@@ -629,12 +823,18 @@ def _region_payloads(recognized_text: list[dict], img_w: int, img_h: int) -> lis
     return regions
 
 
-def _find_label_value(regions: list[dict], aliases: list[str], img_w: int, img_h: int) -> str:
+def _find_label_value(
+    regions: list[dict],
+    aliases: list[str],
+    img_w: int,
+    img_h: int,
+    max_rel_y: float = 0.36,
+) -> str:
     label_region = None
     inline_value = ""
 
     for region in regions:
-        if region["rel_y"] >= 0.36:
+        if region["rel_y"] >= max_rel_y:
             continue
 
         normalized = region["normalized"]
@@ -658,10 +858,10 @@ def _find_label_value(regions: list[dict], aliases: list[str], img_w: int, img_h
     label_right = float(label_box[2])
     label_left = float(label_box[0])
     label_center_y = label_region["center_y"]
-    row_tolerance = max(26.0, img_h * 0.025)
+    row_tolerance = max(24.0, img_h * 0.014)
 
     for region in regions:
-        if region is label_region or region["rel_y"] >= 0.36:
+        if region is label_region or region["rel_y"] >= max_rel_y:
             continue
         if _looks_like_form_label(region["normalized"]):
             continue
@@ -784,7 +984,7 @@ def _item_can_anchor_visit_row(item: dict) -> bool:
         return False
     text = str(item.get("text") or "")
     return bool(
-        re.search(r"\d{1,2}[-~]\d{1,2}[-~]\d{2}", text)
+        re.search(r"\d{1,2}[-~/]\d{1,2}[-~/]\d{2,4}", text)
         or _split_date_weight(text)
         or re.search(r"\d(?:\.\d{1,2})?\s*k[g9o0]?\b", text, flags=re.IGNORECASE)
     )
@@ -845,10 +1045,11 @@ def _clean_visit_row(row: dict) -> dict:
         if split:
             row["date"], row["wt"] = split
 
-    if row["date"] and not row["wt"]:
+    if row["date"]:
         split = _split_date_weight(row["date"])
         if split:
-            row["date"], row["wt"] = split
+            row["date"] = split[0]
+            row["wt"] = _merge_cell(split[1], row["wt"])
 
     row["date"] = _clean_date_text(row["date"])
     row["wt"] = _normalize_weight(row["wt"])
@@ -867,13 +1068,13 @@ def _repair_visit_vaccine_sequence(value: str) -> str:
 def _split_date_weight(value: str) -> tuple[str, str] | None:
     compact = value.replace(" ", "")
     match = re.match(
-        r"^([0-9()]{0,1}\d{1,2}[-~]\d{1,2}[-~]\d{2})(\d(?:\.\d)?k[g9o0])$",
+        r"^([0-9()]{0,1}\d{1,2}[-~/]\d{1,2}[-~/]\d{2,4})(\d(?:\.\d)?k[g9o0])$",
         compact,
         flags=re.IGNORECASE,
     )
     if not match:
         match = re.match(
-            r"^([0-9()]{0,1}\d{1,2}[-~]\d{1,2}[-~]\d{2})(\d(?:\.\d{1,2})?)$",
+            r"^([0-9()]{0,1}\d{1,2}[-~/]\d{1,2}[-~/]\d{2,4})(\d(?:\.\d{1,2})?)$",
             compact,
             flags=re.IGNORECASE,
         )
@@ -913,12 +1114,11 @@ def _visit_key_for_field(field: str) -> str:
     return mapping.get(field, "")
 
 
-def _table_field_from_bbox(field: str, bbox: list, img_w: int) -> str:
-    if field in {"DATE", "WT", "V/S", "Episode", "Danger Signs", "Other CC", "Management"}:
-        return field
-
+def _table_field_from_bbox(field: str, bbox: list, img_w: int, geometry: dict | None = None) -> str:
     mid_x = (float(bbox[0]) + float(bbox[2])) / 2.0 / max(float(img_w), 1.0)
-    for start, end, name in UNDER_FIVE_TABLE_COLUMNS:
+    columns = geometry["columns"] if geometry else UNDER_FIVE_TABLE_COLUMNS
+
+    for start, end, name in columns:
         if start <= mid_x < end:
             return name
 
@@ -937,9 +1137,9 @@ def _merge_cell(existing: str, value: str) -> str:
 def _strip_form_label(value: str) -> str:
     stripped = value.strip()
     stripped = re.sub(
-        r"^(name|age|date\s*of\s*birth|dateofbirth|address|mother'?s?\s*name|father'?s?\s*name|"
-        r"nutritional\s*status|nutritionalstatus|birth\s*weight|birthweight|epi\s*status|epistatus|"
-        r"type\s*of\s*feeding|typeoffeeding)\s*[:\-]?\s*",
+        r"^(name|age|date[\s.]*of[\s.]*birth|dateofbirth|address|mother'?s?[\s.]*name|father'?s?[\s.]*name|"
+        r"nutritional[\s.]*status|nutritionalstatus|birth[\s.]*weight|birthweight|epi[\s.]*status|epistatus|"
+        r"type[\s.]*of[\s.]*feeding|typeoffeeding)\s*[:\-]?\s*",
         "",
         stripped,
         flags=re.IGNORECASE,
@@ -970,12 +1170,14 @@ def _extract_vaccine_tokens(value: str) -> list[str]:
     return tokens
 
 
-def _assert_authorized(authorization: Optional[str]) -> None:
+def _assert_authorized(authorization: Optional[str], x_ocr_api_key: Optional[str] = None) -> None:
     if not OCR_API_KEY:
         return
 
     expected = f"Bearer {OCR_API_KEY}"
-    if not authorization or not secrets.compare_digest(authorization, expected):
+    valid_bearer = authorization and secrets.compare_digest(authorization, expected)
+    valid_custom_header = x_ocr_api_key and secrets.compare_digest(x_ocr_api_key, OCR_API_KEY)
+    if not valid_bearer and not valid_custom_header:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid OCR API key.",
@@ -1064,6 +1266,7 @@ async def health():
 async def predict(
     file: UploadFile = File(..., description="Medical form image"),
     authorization: Optional[str] = Header(default=None),
+    x_ocr_api_key: Optional[str] = Header(default=None),
 ):
     """
     Upload a single `.jpg` medical form image and receive structured OCR output.
@@ -1081,7 +1284,7 @@ async def predict(
     }
     ```
     """
-    _assert_authorized(authorization)
+    _assert_authorized(authorization, x_ocr_api_key)
     engine = get_engine()
     tmp = await _save_upload(file)
     try:
@@ -1096,6 +1299,7 @@ async def predict(
 async def ocr(
     file: UploadFile = File(..., description="Medical form image"),
     authorization: Optional[str] = Header(default=None),
+    x_ocr_api_key: Optional[str] = Header(default=None),
     include_markdown: bool = Query(default=True, description="Include a Markdown OCR table."),
     include_visualization: bool = Query(default=False, description="Include a base64 PNG with OCR boxes."),
 ):
@@ -1105,7 +1309,7 @@ async def ocr(
     The Next.js app expects `text`, optional `confidence`, and optional `fields`.
     This endpoint keeps the custom model output available under `raw`.
     """
-    _assert_authorized(authorization)
+    _assert_authorized(authorization, x_ocr_api_key)
     engine = get_engine()
     tmp = await _save_upload(file)
     try:
@@ -1138,9 +1342,10 @@ async def ocr(
 async def predict_batch(
     files: list[UploadFile] = File(...),
     authorization: Optional[str] = Header(default=None),
+    x_ocr_api_key: Optional[str] = Header(default=None),
 ):
     """Upload multiple medical form images. Returns a list of OCR results."""
-    _assert_authorized(authorization)
+    _assert_authorized(authorization, x_ocr_api_key)
     engine = get_engine()
     if len(files) > 20:
         raise HTTPException(status_code=400, detail="Max 20 images per batch")
@@ -1163,6 +1368,7 @@ async def predict_batch(
 async def validate(
     file: UploadFile = File(...),
     authorization: Optional[str] = Header(default=None),
+    x_ocr_api_key: Optional[str] = Header(default=None),
     ground_truth: str = Form(
         ...,
         description='JSON string: {"Patient Name":"Juan Dela Cruz","Date":"2026-05-12"}'
@@ -1173,7 +1379,7 @@ async def validate(
 
     `ground_truth` form field must be a JSON string mapping field names to expected values.
     """
-    _assert_authorized(authorization)
+    _assert_authorized(authorization, x_ocr_api_key)
     engine = get_engine()
     try:
         gt = json.loads(ground_truth)

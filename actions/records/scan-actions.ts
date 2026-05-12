@@ -62,7 +62,7 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
     requestBody.append("file", file, file.name);
 
     // The OCR API owns image preprocessing and model execution; this action normalizes its response.
-    const headers = ocrApiKey ? { Authorization: `Bearer ${ocrApiKey}` } : undefined;
+    const headers = ocrApiKey ? { "X-OCR-API-Key": ocrApiKey } : undefined;
     const endpoint = withOcrReviewParams(ocrApiUrl);
     const response = await fetch(endpoint, {
       method: "POST",
