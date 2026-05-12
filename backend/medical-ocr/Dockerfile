@@ -43,10 +43,12 @@ ENV MODEL_DIR=/app/model \
     PADDLEOCR_DET_MODEL=PP-OCRv5_mobile_det \
     PADDLEOCR_REC_MODEL=PP-OCRv5_mobile_rec \
     DISABLE_MODEL_SOURCE_CHECK=True \
-    FLAGS_use_onednn=0 \
-    FLAGS_use_mkldnn=0 \
-    ONEDNN_MAX_CPU_ISA=SSE41 \
-    DNNL_MAX_CPU_ISA=SSE41 \
+    FLAGS_use_onednn=1 \
+    FLAGS_use_mkldnn=1 \
+    ONEDNN_MAX_CPU_ISA=ALL \
+    DNNL_MAX_CPU_ISA=ALL \
+    OMP_NUM_THREADS=4 \
+    MKL_NUM_THREADS=4 \
     FLAGS_enable_pir_api=0 \
     PORT=8080
 
