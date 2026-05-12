@@ -6,6 +6,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+# Cloud Run's CPU environment can crash Paddle's OneDNN/PIR path during OCR
+# inference, so keep the runtime on Paddle's safer default CPU kernels.
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_enable_pir_api", "0")
+os.environ.setdefault("DISABLE_MODEL_SOURCE_CHECK", "True")
+
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile, status
 from paddleocr import PaddleOCR
 
@@ -25,8 +31,10 @@ def get_ocr_engine() -> PaddleOCR:
     global ocr_engine
 
     if ocr_engine is None:
-        # Keep optional document preprocessing off for a faster, predictable demo.
+        # Use lightweight mobile OCR models for a Cloud Run friendly demo.
         ocr_engine = PaddleOCR(
+            text_detection_model_name="PP-OCRv5_mobile_det",
+            text_recognition_model_name="en_PP-OCRv5_mobile_rec",
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_textline_orientation=False,
