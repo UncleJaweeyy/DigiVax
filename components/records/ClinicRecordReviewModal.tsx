@@ -17,15 +17,19 @@ interface ClinicRecordReviewModalProps {
   onSave: () => void;
 }
 
-const visitFields: Array<{ key: keyof Omit<ClinicVisitRow, "id">; label: string; width: string; multiline?: boolean }> = [
+const visitFields: Array<{ key: keyof Omit<ClinicVisitRow, "id">; label: string; sublabel?: string; width: string; multiline?: boolean }> = [
   { key: "date", label: "DATE", width: "min-w-32" },
   { key: "wt", label: "WT", width: "min-w-24" },
   { key: "vs", label: "V/S", width: "min-w-24" },
-  { key: "episode", label: "EPISODE", width: "min-w-40", multiline: true },
-  { key: "dangerSigns", label: "DANGER SIGNS", width: "min-w-40", multiline: true },
+  { key: "episode", label: "EPISODE", sublabel: "(DIARRHEA)", width: "min-w-40", multiline: true },
+  { key: "dangerSigns", label: "DANGER SIGNS", sublabel: "(ARI)", width: "min-w-40", multiline: true },
   { key: "otherCc", label: "OTHER CC", width: "min-w-40", multiline: true },
   { key: "management", label: "MANAGEMENT", width: "min-w-48", multiline: true },
 ];
+
+const epiStatusOptions = ["Complete", "Incomplete"];
+const vaccineOptions = ["BCG", "DPT", "OPV", "Hepa B", "AM"];
+const feedingOptions = ["BF", "Mixed", "Bot"];
 
 interface ClinicFieldProps {
   label: string;
@@ -42,6 +46,26 @@ function ClinicField({ label, value, onChange }: ClinicFieldProps) {
         onChange={(event) => onChange(event.target.value)}
         className="h-9 w-full border-0 border-b border-slate-300 bg-transparent px-1 text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-0"
       />
+    </label>
+  );
+}
+
+interface CheckOptionProps {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+function CheckOption({ label, checked, onChange }: CheckOptionProps) {
+  return (
+    <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+      />
+      <span>{label}</span>
     </label>
   );
 }
@@ -88,11 +112,23 @@ export default function ClinicRecordReviewModal({
     });
   };
 
-  const updateVaccines = (value: string) => {
+  const toggleVaccine = (value: string, checked: boolean) => {
+    const nextVaccines = checked
+      ? Array.from(new Set([...draft.vaccines, value]))
+      : draft.vaccines.filter((item) => item !== value);
+
     onChange({
       ...draft,
-      vaccines: value.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean),
+      vaccines: nextVaccines,
     });
+  };
+
+  const updateEpiStatus = (value: string, checked: boolean) => {
+    updatePatient("epiStatus", checked ? value : "");
+  };
+
+  const updateFeedingType = (value: string, checked: boolean) => {
+    updatePatient("feedingType", checked ? value : "");
   };
 
   const imageUrl = sourcePreviewUrl || visualization?.dataUrl;
@@ -145,31 +181,63 @@ export default function ClinicRecordReviewModal({
                 <div className="border-b border-slate-200 px-4 py-3">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-600">Patient Details</h3>
                 </div>
-                <div className="grid grid-cols-1 gap-x-4 gap-y-3 p-4 md:grid-cols-2">
-                  <ClinicField label="Name" value={draft.patient.name} onChange={(value) => updatePatient("name", value)} />
-                  <ClinicField label="Nutritional Status" value={draft.patient.nutritionalStatus} onChange={(value) => updatePatient("nutritionalStatus", value)} />
-                  <ClinicField label="Age" value={draft.patient.age} onChange={(value) => updatePatient("age", value)} />
-                  <ClinicField label="Birth Weight" value={draft.patient.birthWeight} onChange={(value) => updatePatient("birthWeight", value)} />
-                  <ClinicField label="Date of Birth" value={draft.patient.dateOfBirth} onChange={(value) => updatePatient("dateOfBirth", value)} />
-                  <ClinicField label="EPI Status" value={draft.patient.epiStatus} onChange={(value) => updatePatient("epiStatus", value)} />
-                  <ClinicField label="Address" value={draft.patient.address} onChange={(value) => updatePatient("address", value)} />
-                  <ClinicField label="Type of Feeding" value={draft.patient.feedingType} onChange={(value) => updatePatient("feedingType", value)} />
-                  <ClinicField label="Mother's Name" value={draft.patient.motherName} onChange={(value) => updatePatient("motherName", value)} />
-                  <ClinicField label="Father's Name" value={draft.patient.fatherName} onChange={(value) => updatePatient("fatherName", value)} />
-                </div>
-              </section>
+                <div className="grid grid-cols-1 gap-6 p-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <ClinicField label="Name" value={draft.patient.name} onChange={(value) => updatePatient("name", value)} />
+                    <ClinicField label="Age" value={draft.patient.age} onChange={(value) => updatePatient("age", value)} />
+                    <ClinicField label="Date of Birth" value={draft.patient.dateOfBirth} onChange={(value) => updatePatient("dateOfBirth", value)} />
+                    <ClinicField label="Address" value={draft.patient.address} onChange={(value) => updatePatient("address", value)} />
+                    <ClinicField label="Mother's Name" value={draft.patient.motherName} onChange={(value) => updatePatient("motherName", value)} />
+                    <ClinicField label="Father's Name" value={draft.patient.fatherName} onChange={(value) => updatePatient("fatherName", value)} />
+                  </div>
 
-              <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <label className="block">
-                  <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                    EPI / Vaccines
-                  </span>
-                  <textarea
-                    value={draft.vaccines.join(", ")}
-                    onChange={(event) => updateVaccines(event.target.value)}
-                    className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
+                  <div className="space-y-3">
+                    <ClinicField label="Nutritional Status" value={draft.patient.nutritionalStatus} onChange={(value) => updatePatient("nutritionalStatus", value)} />
+                    <ClinicField label="Birth Weight" value={draft.patient.birthWeight} onChange={(value) => updatePatient("birthWeight", value)} />
+
+                    <div className="grid grid-cols-[8.5rem_1fr] gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">EPI Status</span>
+                      <div className="flex flex-wrap gap-x-5 gap-y-2">
+                        {epiStatusOptions.map((option) => (
+                          <CheckOption
+                            key={option}
+                            label={option}
+                            checked={draft.patient.epiStatus === option}
+                            onChange={(checked) => updateEpiStatus(option, checked)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-[8.5rem_1fr] gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">EPI / Vaccines</span>
+                      <div className="grid grid-cols-3 gap-x-5 gap-y-2">
+                        {vaccineOptions.map((option) => (
+                          <CheckOption
+                            key={option}
+                            label={option}
+                            checked={draft.vaccines.includes(option)}
+                            onChange={(checked) => toggleVaccine(option, checked)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-[8.5rem_1fr] gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Type of Feeding</span>
+                      <div className="flex flex-wrap gap-x-5 gap-y-2">
+                        {feedingOptions.map((option) => (
+                          <CheckOption
+                            key={option}
+                            label={option}
+                            checked={draft.patient.feedingType === option}
+                            onChange={(checked) => updateFeedingType(option, checked)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </section>
 
               <section className="rounded-lg border border-slate-200 bg-white">
@@ -184,14 +252,30 @@ export default function ClinicRecordReviewModal({
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left text-sm">
-                    <thead className="bg-slate-100 text-xs font-black uppercase tracking-wide text-slate-600">
+                    <thead className="bg-slate-100 text-center text-xs font-black uppercase tracking-wide text-slate-700">
                       <tr>
-                        {visitFields.map((field) => (
-                          <th key={field.key} className={`border-b border-slate-200 px-2 py-2 ${field.width}`}>
+                        {visitFields.slice(0, 3).map((field) => (
+                          <th key={field.key} rowSpan={2} className={`border border-slate-300 px-2 py-3 align-middle ${field.width}`}>
                             {field.label}
                           </th>
                         ))}
-                        <th className="w-12 border-b border-slate-200 px-2 py-2" />
+                        <th colSpan={2} className="border border-slate-300 px-2 py-1.5">
+                          Findings / Chief Complaint
+                        </th>
+                        {visitFields.slice(5).map((field) => (
+                          <th key={field.key} rowSpan={2} className={`border border-slate-300 px-2 py-3 align-middle ${field.width}`}>
+                            {field.label}
+                          </th>
+                        ))}
+                        <th rowSpan={2} className="w-12 border border-slate-300 px-2 py-2" />
+                      </tr>
+                      <tr>
+                        {visitFields.slice(3, 5).map((field) => (
+                          <th key={field.key} className={`border border-slate-300 px-2 py-1.5 ${field.width}`}>
+                            <span className="block">{field.label}</span>
+                            {field.sublabel && <span className="block">{field.sublabel}</span>}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>

@@ -85,6 +85,10 @@ service cloud.firestore {
         || value.matches("^vaccination-records/" + request.auth.uid + "/.+$");
     }
 
+    function validClinicRecord(value) {
+      return value == null || value is map;
+    }
+
     function recordKeys() {
       return [
         "patientName",
@@ -99,6 +103,7 @@ service cloud.firestore {
         "sourceFileName",
         "sourceFileType",
         "sourceStoragePath",
+        "clinicRecord",
         "searchKeywords",
         "createdBy",
         "createdByName",
@@ -125,6 +130,7 @@ service cloud.firestore {
         && validString(request.resource.data.sourceFileType)
         && validString(request.resource.data.sourceStoragePath)
         && validRecordStoragePath(request.resource.data.sourceStoragePath)
+        && validClinicRecord(request.resource.data.clinicRecord)
         && request.resource.data.searchKeywords is list
         && request.resource.data.createdBy == request.auth.uid
         && validString(request.resource.data.createdByName)

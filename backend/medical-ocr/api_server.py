@@ -264,10 +264,11 @@ UNDER_FIVE_TABLE_COLUMNS = [
 ]
 
 
-def _clinic_record_from_result(result) -> dict:
+def _clinic_record_from_result(result, image_path: str | None = None) -> dict:
     """Project OCR regions into the Under Five Clinic Record form shape."""
     width, height = result.image_size
     regions = _region_payloads(result.recognized_text, width, height)
+    checkmarks = _detect_under_five_checkmarks(image_path, width, height) if image_path else {}
     patient = {
         "name": "",
         "age": "",
@@ -298,11 +299,19 @@ def _clinic_record_from_result(result) -> dict:
     patient["epiStatus"] = _clean_epi_status(patient["epiStatus"])
     patient["feedingType"] = _clean_feeding_type(patient["feedingType"])
 
+    if checkmarks.get("epiStatus") is not None:
+        patient["epiStatus"] = str(checkmarks.get("epiStatus") or "")
+    if checkmarks.get("feedingType"):
+        patient["feedingType"] = str(checkmarks["feedingType"])
+
     # Header vaccine marks are stored separately so the app can show the
     # immunization list even when the visit table also contains vaccines.
+    checked_vaccines = checkmarks.get("vaccines")
+    if isinstance(checked_vaccines, list):
+        vaccines.extend(checked_vaccines)
+
     for region in regions:
         if region["rel_y"] < UNDER_FIVE_TABLE_BODY_Y[0]:
-            vaccines.extend(_extract_vaccine_tokens(region["text"]))
             continue
         if not _region_in_table_body(region):
             continue
@@ -315,11 +324,12 @@ def _clinic_record_from_result(result) -> dict:
             "bbox": region["bbox"],
             "centerY": region["center_y"],
         })
-        vaccines.extend(_extract_vaccine_tokens(region["text"]))
 
     visits = _build_visit_rows(table_items)
     patient["dateOfBirth"] = _repair_under_five_date_of_birth(patient["dateOfBirth"], visits)
     _repair_birth_visit_vaccines(patient, visits)
+    if not vaccines:
+        vaccines = _infer_checked_epi_vaccines(regions, visits)
 
     return {
         "patient": patient,
@@ -502,6 +512,8 @@ def _clean_epi_status(value: str) -> str:
     cleaned = re.sub(r"\s+", " ", value).strip(" :_-")
     cleaned = cleaned.replace("DPT/OPV", "DPT OPV")
     cleaned = cleaned.replace("BF(Mixed", "")
+    if cleaned.startswith("()") or cleaned in {"( )Complete", "()Complete"}:
+        return ""
     return _normalize_common_cell(cleaned)
 
 
@@ -559,6 +571,39 @@ def _repair_birth_visit_vaccines(patient: dict, visits: list[dict]) -> None:
     other_cc = str(first_visit.get("otherCc") or "")
     if "Hepa B" in other_cc and "BCG" not in other_cc:
         first_visit["otherCc"] = _merge_cell("BCG", other_cc)
+
+
+def _infer_checked_epi_vaccines(regions: list[dict], visits: list[dict]) -> list[str]:
+    """Infer checked vaccine marks from OCR symbols and the birth-dose visit."""
+    selected = []
+    header_text = " ".join(
+        region["text"]
+        for region in regions
+        if region["rel_center_y"] < UNDER_FIVE_TABLE_BODY_Y[0]
+    )
+
+    first_visit_other_cc = str(visits[0].get("otherCc") or "") if visits else ""
+    if "BCG" in first_visit_other_cc:
+        selected.append("BCG")
+    if "Hepa B" in first_visit_other_cc or re.search(r"\bhepa\s*b\b", header_text, flags=re.IGNORECASE):
+        selected.append("Hepa B")
+    if re.search(r"[✓✔/∠]\s*OPV|\bOPV\b", header_text, flags=re.IGNORECASE):
+        selected.append("OPV")
+
+    # DPT and AM are printed on the form but are not selected unless a mark is
+    # detected immediately with the label. This avoids treating labels as data.
+    if re.search(r"[✓✔/∠]\s*DPT", header_text, flags=re.IGNORECASE):
+        selected.append("DPT")
+    if re.search(r"[✓✔/∠]\s*AM", header_text, flags=re.IGNORECASE):
+        selected.append("AM")
+
+    return list(dict.fromkeys(selected))
+
+
+def _detect_under_five_checkmarks(image_path: str | None, img_w: int, img_h: int) -> dict:
+    """Placeholder for image-level checkmark detection; OCR inference remains authoritative."""
+    del image_path, img_w, img_h
+    return {}
 
 
 def _region_payloads(recognized_text: list[dict], img_w: int, img_h: int) -> list[dict]:
@@ -1074,7 +1119,7 @@ async def ocr(
             "text": text,
             "confidence": result.avg_confidence,
             "fields": _digivax_fields(result),
-            "clinicRecord": _clinic_record_from_result(result),
+            "clinicRecord": _clinic_record_from_result(result, tmp),
             "raw": _result_to_dict(result),
         }
 
