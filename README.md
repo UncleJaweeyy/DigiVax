@@ -171,3 +171,5 @@ For a local default PaddleOCR backend, see `backend/ocr/README.md`. Once it is r
 OCR_API_URL=http://127.0.0.1:8000/ocr
 OCR_USE_MOCK=false
 ```
+
+For Cloud Run, Secret Manager, and Firebase App Hosting OCR deployment details, see `docs/ocr-deployment/README.md`.

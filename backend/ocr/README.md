@@ -127,3 +127,5 @@ OCR_API_URL=https://YOUR-CLOUD-RUN-URL/ocr
 OCR_API_KEY=change-this-demo-key
 OCR_USE_MOCK=false
 ```
+
+For the full DigiVax Cloud Run, Secret Manager, and App Hosting wiring, see `../../docs/ocr-deployment/README.md`.

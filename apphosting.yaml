@@ -5,3 +5,20 @@ runConfig:
   concurrency: 80
   cpu: 1
   memoryMiB: 512
+
+# Server-side OCR configuration used by actions/records/scan-actions.ts.
+env:
+  - variable: OCR_API_URL
+    value: https://digivax-ocr-6fntyewn7q-as.a.run.app/ocr
+    availability:
+      - RUNTIME
+
+  - variable: OCR_API_KEY
+    secret: digivaxOcrApiKey
+    availability:
+      - RUNTIME
+
+  - variable: OCR_USE_MOCK
+    value: "false"
+    availability:
+      - RUNTIME
