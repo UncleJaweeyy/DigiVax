@@ -6,25 +6,6 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function hasProfile() {
-      return signedIn()
-        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
-    }
-
-    function isActiveStatus(status) {
-      return status in ["Active", "active"];
-    }
-
-    function isStaffRole(role) {
-      return role in ["admin", "Admin", "bhw", "BHW"];
-    }
-
-    function isActiveStaff() {
-      return hasProfile()
-        && isActiveStatus(firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status)
-        && isStaffRole(firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role);
-    }
-
     function isOwner(userId) {
       return signedIn() && request.auth.uid == userId;
     }
@@ -40,10 +21,8 @@ service firebase.storage {
     }
 
     match /vaccination-records/{userId}/{fileName=**} {
-      allow read: if isOwner(userId) || isActiveStaff();
-      allow create: if isActiveStaff()
-        && request.auth.uid == userId
-        && validRecordFile();
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && validRecordFile();
       allow update, delete: if false;
     }
   }

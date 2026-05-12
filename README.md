@@ -164,3 +164,10 @@ If the backend fails, return a non-2xx response with:
 ```
 
 For local demos without an OCR backend, set `OCR_USE_MOCK=true` and leave `OCR_API_URL` empty.
+
+For a local default PaddleOCR backend, see `backend/ocr/README.md`. Once it is running, set:
+
+```env
+OCR_API_URL=http://127.0.0.1:8000/ocr
+OCR_USE_MOCK=false
+```

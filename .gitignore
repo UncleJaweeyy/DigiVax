@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+/.python
+/python-*-amd64.exe
+/backend/ocr/.venv
 /.pnp
 .pnp.*
 .yarn/*
@@ -29,8 +32,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+next-dev.log
+next-dev.err.log
 firebase-debug.log
 firebase-debug.*.log
+backend/ocr/*.log
+backend/ocr/demo-ocr-smoke.png
 auth-users.json
 
 # env files (can opt-in for committing if needed)
