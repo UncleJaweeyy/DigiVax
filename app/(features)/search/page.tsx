@@ -93,7 +93,7 @@ export default function SearchPage() {
       const record = await getVaccinationRecord(recordId);
       const clinicRecord = getDisplayClinicRecord(record);
       setSelectedRecord(record);
-      setEditedText(record.correctedText);
+      setEditedText(record.correctedText || record.rawText);
       setEditedClinicRecord(clinicRecord);
       setIsEditing(mode === "edit");
     } catch (error) {
@@ -435,7 +435,9 @@ export default function SearchPage() {
 
               <section className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto p-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-800">Corrected OCR Text</h3>
+                  <h3 className="text-lg font-bold text-slate-800">
+                    {editedClinicRecord ? "Under Five Clinic Record Review" : "Corrected OCR Text"}
+                  </h3>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -474,14 +476,18 @@ export default function SearchPage() {
                   />
                 )}
 
-                <div>
-                  <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-400">Raw OCR Text</h3>
-                  <pre className="max-h-48 overflow-auto rounded-2xl border border-slate-100 bg-white p-5 text-xs leading-relaxed text-slate-500">
-                    {selectedRecord.rawText || "No raw OCR text saved."}
-                  </pre>
-                </div>
+                {!editedClinicRecord && (
+                  <>
+                    <div>
+                      <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-400">Raw OCR Text</h3>
+                      <pre className="max-h-48 overflow-auto rounded-2xl border border-slate-100 bg-white p-5 text-xs leading-relaxed text-slate-500">
+                        {selectedRecord.rawText || "No raw OCR text saved."}
+                      </pre>
+                    </div>
 
-                <CrfLabelSummary metadata={selectedRecord.ocrMetadata} />
+                    <CrfLabelSummary metadata={selectedRecord.ocrMetadata} />
+                  </>
+                )}
               </section>
             </div>
           </div>
@@ -608,11 +614,59 @@ function getDisplayClinicRecord(record: VaccinationRecordDocument) {
     return normalizeClinicRecordDraft(record.clinicRecord);
   }
 
-  if (!record.correctedText.includes("Clinic Format: Under Five Clinic Record")) {
-    return null;
+  const clinicText = [record.correctedText, record.rawText].find(looksLikeClinicRecord);
+
+  if (clinicText) {
+    return buildClinicRecordPreview(record, clinicText);
   }
 
-  return normalizeClinicRecordDraft(clinicRecordFromText(record.correctedText));
+  return null;
+}
+
+function hasClinicFormat(value: string) {
+  return /clinic\s*format\s*:\s*under\s+five\s+clinic\s+record/i.test(value);
+}
+
+function looksLikeClinicRecord(value: string) {
+  if (!value.trim()) return false;
+  if (hasClinicFormat(value)) return true;
+  if (/findings\s*\/\s*chief\s+complaint/i.test(value)) return true;
+
+  const fieldPatterns = [
+    /\bname\s*:/i,
+    /\bage\s*:/i,
+    /\bdate\s+of\s+birth\s*:/i,
+    /\baddress\s*:/i,
+    /\bmother'?s\s+name\s*:/i,
+    /\bfather'?s\s+name\s*:/i,
+    /\bnutritional\s+status\s*:/i,
+    /\bbirth\s+weight\s*:/i,
+    /\bepi\s+status\s*:/i,
+    /\bvaccine\s+type\s*:/i,
+  ];
+
+  return fieldPatterns.filter((pattern) => pattern.test(value)).length >= 3;
+}
+
+function buildClinicRecordPreview(record: VaccinationRecordDocument, text: string) {
+  const clinicRecord = normalizeClinicRecordDraft(clinicRecordFromText(text));
+
+  if (!clinicRecord.patient.name && record.patientName !== "Unknown Patient") {
+    clinicRecord.patient.name = record.patientName;
+  }
+
+  if (!clinicRecord.vaccines.length && record.vaccineType !== "Unspecified Vaccine") {
+    clinicRecord.vaccines = record.vaccineType
+      .split(/[,;/]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (!clinicRecord.visits.some((visit) => visit.date.trim()) && record.vaccinationDate) {
+    clinicRecord.visits[0].date = record.vaccinationDate;
+  }
+
+  return clinicRecord;
 }
 
 function withDisplayClinicRecord(record: VaccinationRecordDocument): VaccinationRecordDocument {
