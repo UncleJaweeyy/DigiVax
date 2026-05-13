@@ -1,4 +1,4 @@
-import type { ClinicRecordDraft } from "@/types/clinic-record";
+import type { ClinicRecordDraft, OcrExtractionMetadata } from "@/types/clinic-record";
 
 export interface VaccinationRecord {
   id: string;
@@ -25,6 +25,8 @@ export interface VaccinationRecordDocument {
   sourceFileType?: string;
   sourceStoragePath?: string;
   clinicRecord?: ClinicRecordDraft;
+  ocrMetadata?: OcrExtractionMetadata;
+  semanticChunks?: string[];
   searchKeywords: string[];
   createdBy: string;
   createdByName: string;
@@ -39,4 +41,5 @@ export interface NewVaccinationRecordInput {
   sourceFileType?: string;
   sourceStoragePath?: string;
   clinicRecord?: ClinicRecordDraft;
+  ocrMetadata?: OcrExtractionMetadata;
 }

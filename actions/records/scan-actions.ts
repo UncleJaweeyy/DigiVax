@@ -3,7 +3,12 @@
 "use server";
 
 import { MOCK_EXTRACTED_TEXT } from "@/lib/records/mock-data";
-import type { ClinicRecordDraft, OcrVisualization } from "@/types/clinic-record";
+import type {
+  ClinicRecordDraft,
+  OcrExtractionMetadata,
+  OcrTokenMetadata,
+  OcrVisualization,
+} from "@/types/clinic-record";
 
 export type ScanStatus = "idle" | "processing" | "done" | "error";
 
@@ -13,6 +18,7 @@ export interface ScanResult {
   confidence?: number;
   fields?: Record<string, string>;
   clinicRecord?: ClinicRecordDraft;
+  ocrMetadata?: OcrExtractionMetadata;
   markdown?: string;
   visualization?: OcrVisualization;
   error?: string;
@@ -24,10 +30,24 @@ interface OcrApiResponse {
   confidence?: number;
   fields?: Record<string, string>;
   clinicRecord?: ClinicRecordDraft;
+  raw?: OcrRawResponse;
   markdown?: string;
   visualization?: OcrVisualization;
   error?: string;
   message?: string;
+}
+
+interface OcrRawResponse {
+  recognized_text?: Array<{
+    field?: string;
+    value?: string;
+    confidence?: number;
+    bbox?: number[];
+  }>;
+  image_size?: number[];
+  processing_time_ms?: number;
+  avg_confidence?: number;
+  model_info?: Record<string, unknown>;
 }
 
 const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
@@ -91,6 +111,7 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
       confidence: data.confidence,
       fields: data.fields,
       clinicRecord: data.clinicRecord,
+      ocrMetadata: buildOcrMetadata(data.raw),
       markdown: data.markdown,
       visualization: data.visualization,
     };
@@ -100,6 +121,119 @@ export async function processScan(formData: FormData): Promise<ScanResult> {
       error: error instanceof Error ? error.message : "An unexpected error occurred.",
     };
   }
+}
+
+function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefined {
+  const imageSize = normalizeImageSize(raw?.image_size);
+  const recognizedText = Array.isArray(raw?.recognized_text) ? raw.recognized_text : [];
+
+  const tokens: OcrTokenMetadata[] = [];
+
+  for (const item of recognizedText) {
+    const bbox = normalizeBbox(item.bbox);
+    const text = typeof item.value === "string" ? item.value.trim() : "";
+    if (!bbox || !text) continue;
+
+    const [x1, y1, x2, y2] = bbox;
+    const x = roundNumber((x1 + x2) / 2);
+    const y = roundNumber((y1 + y2) / 2);
+    const token: OcrTokenMetadata = {
+      text,
+      x,
+      y,
+      w: roundNumber(x2 - x1),
+      h: roundNumber(y2 - y1),
+      row: 0,
+      section: inferTokenSection(y, x, imageSize),
+      label: typeof item.field === "string" && item.field.trim() ? item.field.trim() : "TEXT",
+      bbox,
+    };
+
+    if (typeof item.confidence === "number") {
+      token.confidence = roundNumber(item.confidence, 4);
+    }
+
+    tokens.push(token);
+  }
+
+  assignTokenRows(tokens);
+
+  if (!tokens.length && !imageSize) {
+    return undefined;
+  }
+
+  return {
+    imageSize: imageSize || undefined,
+    processingTimeMs: typeof raw?.processing_time_ms === "number"
+      ? roundNumber(raw.processing_time_ms)
+      : undefined,
+    averageConfidence: typeof raw?.avg_confidence === "number"
+      ? roundNumber(raw.avg_confidence, 4)
+      : undefined,
+    modelInfo: normalizeModelInfo(raw?.model_info),
+    tokens,
+  };
+}
+
+function normalizeImageSize(value?: number[]): [number, number] | null {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  const width = Number(value[0]);
+  const height = Number(value[1]);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+  return [Math.round(width), Math.round(height)];
+}
+
+function normalizeBbox(value?: number[]) {
+  if (!Array.isArray(value) || value.length < 4) return null;
+  const bbox = value.slice(0, 4).map(Number);
+  if (bbox.some((item) => !Number.isFinite(item))) return null;
+  return bbox.map((item) => roundNumber(item));
+}
+
+function assignTokenRows(tokens: OcrTokenMetadata[]) {
+  const sorted = [...tokens].sort((a, b) => a.y - b.y || a.x - b.x);
+  let currentRow = -1;
+  let previousY = Number.NEGATIVE_INFINITY;
+
+  for (const token of sorted) {
+    const threshold = Math.max(24, token.h * 1.2);
+    if (currentRow < 0 || token.y - previousY > threshold) {
+      currentRow += 1;
+    }
+    token.row = currentRow;
+    previousY = token.y;
+  }
+}
+
+function inferTokenSection(
+  y: number,
+  x: number,
+  imageSize: [number, number] | null,
+): OcrTokenMetadata["section"] {
+  if (!imageSize) return "UNKNOWN";
+  const [width, height] = imageSize;
+  const yNorm = y / Math.max(height, 1);
+  const xNorm = x / Math.max(width, 1);
+
+  if (yNorm < 0.15) return "HEADER";
+  if (yNorm >= 0.36) return "TABLE_RECORDS";
+  return xNorm < 0.5 ? "PATIENT_INFORMATION" : "NUTRITIONAL_STATUS";
+}
+
+function normalizeModelInfo(value?: Record<string, unknown>) {
+  if (!value) return undefined;
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string | number | boolean] => {
+      const item = entry[1];
+      return ["string", "number", "boolean"].includes(typeof item);
+    }),
+  );
+}
+
+function roundNumber(value: number, precision = 2) {
+  const factor = 10 ** precision;
+  return Math.round(value * factor) / factor;
 }
 
 function withOcrReviewParams(url: string) {

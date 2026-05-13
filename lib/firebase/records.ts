@@ -18,6 +18,7 @@ import type {
   VaccinationRecordDocument,
   VaccinationRecordStatus,
 } from "@/types/records";
+import type { ClinicRecordDraft } from "@/types/clinic-record";
 import { formatAppDateTime } from "@/lib/utils/date-format";
 import { auth, db } from "@/lib/firebase/client";
 import { writeClientAuditLog } from "@/lib/firebase/audit-client";
@@ -41,6 +42,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
 
   const correctedText = input.correctedText?.trim() || input.rawText.trim();
   const parsed = parseVaccinationText(correctedText);
+  const semanticChunks = buildSemanticChunks(input.clinicRecord);
 
   // Store both display fields and normalized/searchable fields for fast list rendering.
   const docRef = await addDoc(collection(db, recordsCollection), {
@@ -57,6 +59,8 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
     sourceFileType: input.sourceFileType || "",
     sourceStoragePath: input.sourceStoragePath || "",
     clinicRecord: input.clinicRecord || null,
+    ocrMetadata: input.ocrMetadata || null,
+    semanticChunks,
     searchKeywords: parsed.searchKeywords,
     createdBy: user.uid,
     createdByName: profile.name || profile.email,
@@ -182,7 +186,15 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
     sourceFileName: getString(data.sourceFileName),
     sourceFileType: getString(data.sourceFileType),
     sourceStoragePath: getString(data.sourceStoragePath),
-    clinicRecord: isRecordObject(data.clinicRecord) ? data.clinicRecord : undefined,
+    clinicRecord: isRecordObject(data.clinicRecord)
+      ? data.clinicRecord as unknown as VaccinationRecordDocument["clinicRecord"]
+      : undefined,
+    ocrMetadata: isRecordObject(data.ocrMetadata)
+      ? data.ocrMetadata as unknown as VaccinationRecordDocument["ocrMetadata"]
+      : undefined,
+    semanticChunks: Array.isArray(data.semanticChunks)
+      ? data.semanticChunks.filter((value): value is string => typeof value === "string")
+      : [],
     searchKeywords: Array.isArray(data.searchKeywords)
       ? data.searchKeywords.filter((value): value is string => typeof value === "string")
       : [],
@@ -193,11 +205,34 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
   };
 }
 
+function buildSemanticChunks(clinicRecord?: ClinicRecordDraft) {
+  if (!clinicRecord) return [];
+
+  const patientName = clinicRecord.patient.name || "Unknown patient";
+  return clinicRecord.visits
+    .map((visit) => {
+      const findings = [
+        visit.episode && `episode ${visit.episode}`,
+        visit.dangerSigns && `danger signs ${visit.dangerSigns}`,
+        visit.otherCc,
+        visit.management && `management ${visit.management}`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const date = visit.date || "an unspecified date";
+      const weight = visit.wt ? ` Weight: ${visit.wt}.` : "";
+      const details = findings ? ` Recorded: ${findings}.` : "";
+
+      return `Patient ${patientName} had a clinic visit on ${date}.${weight}${details}`;
+    })
+    .filter((chunk) => chunk.trim().length > 0);
+}
+
 function getString(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function isRecordObject(value: unknown): value is VaccinationRecordDocument["clinicRecord"] {
+function isRecordObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

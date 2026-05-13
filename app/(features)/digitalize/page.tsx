@@ -16,7 +16,11 @@ import {
   clinicRecordToText,
   normalizeClinicRecordDraft,
 } from "@/lib/records/clinic-format";
-import type { ClinicRecordDraft, OcrVisualization } from "@/types/clinic-record";
+import type {
+  ClinicRecordDraft,
+  OcrExtractionMetadata,
+  OcrVisualization,
+} from "@/types/clinic-record";
 
 export default function DigitalizePage() {
   const [status, setStatus] = useState<ScanStatus>("idle");
@@ -26,6 +30,7 @@ export default function DigitalizePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [clinicDraft, setClinicDraft] = useState<ClinicRecordDraft | null>(null);
   const [ocrMarkdown, setOcrMarkdown] = useState("");
+  const [ocrMetadata, setOcrMetadata] = useState<OcrExtractionMetadata | undefined>();
   const [ocrVisualization, setOcrVisualization] = useState<OcrVisualization | undefined>();
   const [sourcePreviewUrl, setSourcePreviewUrl] = useState("");
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -39,6 +44,7 @@ export default function DigitalizePage() {
     setSelectedFile(file);
     setClinicDraft(null);
     setOcrMarkdown("");
+    setOcrMetadata(undefined);
     setOcrVisualization(undefined);
     setSourcePreviewUrl((currentUrl) => {
       if (currentUrl) URL.revokeObjectURL(currentUrl);
@@ -61,6 +67,7 @@ export default function DigitalizePage() {
         setStatus("done");
         setClinicDraft(nextDraft);
         setOcrMarkdown(result.markdown || "");
+        setOcrMetadata(result.ocrMetadata);
         setOcrVisualization(result.visualization);
         setTextPreview(nextText);
         setIsReviewOpen(true);
@@ -108,6 +115,7 @@ export default function DigitalizePage() {
         sourceFileType: selectedFile?.type,
         sourceStoragePath,
         clinicRecord: clinicDraft || undefined,
+        ocrMetadata,
       });
 
       alert(`Saved record ${recordId}`);
@@ -117,6 +125,7 @@ export default function DigitalizePage() {
       setSelectedFile(null);
       setClinicDraft(null);
       setOcrMarkdown("");
+      setOcrMetadata(undefined);
       setOcrVisualization(undefined);
       setSourcePreviewUrl((currentUrl) => {
         if (currentUrl) URL.revokeObjectURL(currentUrl);

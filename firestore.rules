@@ -89,6 +89,10 @@ service cloud.firestore {
       return value == null || value is map;
     }
 
+    function validOcrMetadata(value) {
+      return value == null || value is map;
+    }
+
     function recordKeys() {
       return [
         "patientName",
@@ -104,6 +108,8 @@ service cloud.firestore {
         "sourceFileType",
         "sourceStoragePath",
         "clinicRecord",
+        "ocrMetadata",
+        "semanticChunks",
         "searchKeywords",
         "createdBy",
         "createdByName",
@@ -131,6 +137,8 @@ service cloud.firestore {
         && validString(request.resource.data.sourceStoragePath)
         && validRecordStoragePath(request.resource.data.sourceStoragePath)
         && validClinicRecord(request.resource.data.clinicRecord)
+        && validOcrMetadata(request.resource.data.ocrMetadata)
+        && request.resource.data.semanticChunks is list
         && request.resource.data.searchKeywords is list
         && request.resource.data.createdBy == request.auth.uid
         && validString(request.resource.data.createdByName)

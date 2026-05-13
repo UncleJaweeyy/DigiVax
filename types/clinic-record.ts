@@ -28,6 +28,27 @@ export interface ClinicRecordDraft {
   visits: ClinicVisitRow[];
 }
 
+export interface OcrTokenMetadata {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  row: number;
+  section: "HEADER" | "PATIENT_INFORMATION" | "NUTRITIONAL_STATUS" | "TABLE_RECORDS" | "UNKNOWN";
+  label: string;
+  confidence?: number;
+  bbox?: number[];
+}
+
+export interface OcrExtractionMetadata {
+  imageSize?: [number, number];
+  processingTimeMs?: number;
+  averageConfidence?: number;
+  modelInfo?: Record<string, string | number | boolean>;
+  tokens: OcrTokenMetadata[];
+}
+
 export interface OcrVisualization {
   mimeType: string;
   dataUrl: string;
