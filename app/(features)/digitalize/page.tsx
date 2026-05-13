@@ -104,16 +104,16 @@ export default function DigitalizePage() {
     setIsSaving(true);
 
     try {
-      const sourceStoragePath = selectedFile
+      const sourceUpload = selectedFile
         ? await uploadVaccinationRecordFile(selectedFile)
-        : "";
+        : null;
 
       const recordId = await createVaccinationRecord({
         rawText: textPreview,
         correctedText: textPreview,
-        sourceFileName: selectedFile?.name,
-        sourceFileType: selectedFile?.type,
-        sourceStoragePath,
+        sourceFileName: sourceUpload?.fileName || selectedFile?.name,
+        sourceFileType: sourceUpload?.contentType || selectedFile?.type,
+        sourceStoragePath: sourceUpload?.storagePath || "",
         clinicRecord: clinicDraft || undefined,
         ocrMetadata,
       });
