@@ -24,6 +24,8 @@ import {
   getVaccinationRecordFilePreview,
   type VaccinationRecordFilePreview,
 } from "@/lib/firebase/storage";
+import ClinicRecordSummary from "@/components/records/ClinicRecordSummary";
+import { clinicRecordFromText, normalizeClinicRecordDraft } from "@/lib/records/clinic-format";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -366,12 +368,18 @@ export default function SearchPage() {
                   </div>
                 </div>
 
-                <textarea
-                  className="min-h-[220px] flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 p-5 font-mono text-sm leading-relaxed text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-white"
-                  value={editedText}
-                  onChange={(event) => setEditedText(event.target.value)}
-                  disabled={!isEditing}
-                />
+                {!isEditing && getDisplayClinicRecord(selectedRecord) ? (
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <ClinicRecordSummary record={getDisplayClinicRecord(selectedRecord)!} />
+                  </div>
+                ) : (
+                  <textarea
+                    className="min-h-[220px] flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 p-5 font-mono text-sm leading-relaxed text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-white"
+                    value={editedText}
+                    onChange={(event) => setEditedText(event.target.value)}
+                    disabled={!isEditing}
+                  />
+                )}
 
                 <div>
                   <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-400">Raw OCR Text</h3>
@@ -485,6 +493,18 @@ export default function SearchPage() {
       )}
     </div>
   );
+}
+
+function getDisplayClinicRecord(record: VaccinationRecordDocument) {
+  if (record.clinicRecord) {
+    return normalizeClinicRecordDraft(record.clinicRecord);
+  }
+
+  if (!record.correctedText.includes("Clinic Format: Under Five Clinic Record")) {
+    return null;
+  }
+
+  return normalizeClinicRecordDraft(clinicRecordFromText(record.correctedText));
 }
 
 function RecordFact({ label, value }: { label: string; value: string }) {
