@@ -118,9 +118,32 @@ service cloud.firestore {
       ];
     }
 
+    function requiredRecordKeys() {
+      return [
+        "patientName",
+        "patientNameLower",
+        "vaccineType",
+        "vaccineTypeLower",
+        "vaccinationDate",
+        "recordYear",
+        "rawText",
+        "correctedText",
+        "status",
+        "sourceFileName",
+        "sourceFileType",
+        "sourceStoragePath",
+        "clinicRecord",
+        "searchKeywords",
+        "createdBy",
+        "createdByName",
+        "createdAt",
+        "updatedAt"
+      ];
+    }
+
     function validRecordDocument() {
       return request.resource.data.keys().hasOnly(recordKeys())
-        && request.resource.data.keys().hasAll(recordKeys())
+        && request.resource.data.keys().hasAll(requiredRecordKeys())
         && validString(request.resource.data.patientName)
         && validString(request.resource.data.patientNameLower)
         && validString(request.resource.data.vaccineType)
@@ -137,8 +160,14 @@ service cloud.firestore {
         && validString(request.resource.data.sourceStoragePath)
         && validRecordStoragePath(request.resource.data.sourceStoragePath)
         && validClinicRecord(request.resource.data.clinicRecord)
-        && validOcrMetadata(request.resource.data.ocrMetadata)
-        && request.resource.data.semanticChunks is list
+        && (
+          !request.resource.data.keys().hasAny(["ocrMetadata"])
+          || validOcrMetadata(request.resource.data.ocrMetadata)
+        )
+        && (
+          !request.resource.data.keys().hasAny(["semanticChunks"])
+          || request.resource.data.semanticChunks is list
+        )
         && request.resource.data.searchKeywords is list
         && request.resource.data.createdBy == request.auth.uid
         && validString(request.resource.data.createdByName)

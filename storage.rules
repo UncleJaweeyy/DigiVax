@@ -11,7 +11,7 @@ service firebase.storage {
     }
 
     function validRecordFile() {
-      return request.resource.size <= 10 * 1024 * 1024
+      return request.resource.size <= 20 * 1024 * 1024
         && request.resource.contentType in [
           "image/jpeg",
           "image/jpg",
