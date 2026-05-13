@@ -121,6 +121,7 @@ export async function updateVaccinationRecord(
   recordId: string,
   updates: {
     correctedText: string;
+    clinicRecord?: ClinicRecordDraft;
     status?: VaccinationRecordStatus;
   },
 ) {
@@ -131,9 +132,10 @@ export async function updateVaccinationRecord(
   }
 
   const parsed = parseVaccinationText(correctedText);
+  const semanticChunks = buildSemanticChunks(updates.clinicRecord);
 
   // Re-parse edited OCR text so corrected values immediately update search and dashboards.
-  await updateDoc(doc(db, recordsCollection, recordId), {
+  const payload: Record<string, unknown> = {
     patientName: parsed.patientName,
     patientNameLower: parsed.patientName.toLowerCase(),
     vaccineType: parsed.vaccineType,
@@ -144,7 +146,14 @@ export async function updateVaccinationRecord(
     status: updates.status || "Pending Review",
     searchKeywords: parsed.searchKeywords,
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (updates.clinicRecord) {
+    payload.clinicRecord = updates.clinicRecord;
+    payload.semanticChunks = semanticChunks;
+  }
+
+  await updateDoc(doc(db, recordsCollection, recordId), payload);
 
   await writeClientAuditLog({
     action: updates.status === "Completed" ? "Review Completed" : "Record Updated",

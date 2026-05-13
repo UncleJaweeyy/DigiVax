@@ -185,6 +185,8 @@ service cloud.firestore {
           "recordYear",
           "correctedText",
           "status",
+          "clinicRecord",
+          "semanticChunks",
           "searchKeywords",
           "updatedAt"
         ])
@@ -197,6 +199,14 @@ service cloud.firestore {
         && validString(request.resource.data.correctedText)
         && request.resource.data.correctedText.size() > 0
         && validRecordStatus(request.resource.data.status)
+        && (
+          !request.resource.data.keys().hasAny(["clinicRecord"])
+          || validClinicRecord(request.resource.data.clinicRecord)
+        )
+        && (
+          !request.resource.data.keys().hasAny(["semanticChunks"])
+          || request.resource.data.semanticChunks is list
+        )
         && request.resource.data.searchKeywords is list
         && request.resource.data.updatedAt == request.time;
     }

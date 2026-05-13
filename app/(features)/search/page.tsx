@@ -25,7 +25,8 @@ import {
   type VaccinationRecordFilePreview,
 } from "@/lib/firebase/storage";
 import ClinicRecordSummary from "@/components/records/ClinicRecordSummary";
-import { clinicRecordFromText, normalizeClinicRecordDraft } from "@/lib/records/clinic-format";
+import { clinicRecordFromText, clinicRecordToText, normalizeClinicRecordDraft } from "@/lib/records/clinic-format";
+import type { ClinicRecordDraft } from "@/types/clinic-record";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -35,6 +36,7 @@ export default function SearchPage() {
   const [isRecordLoading, setIsRecordLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
+  const [editedClinicRecord, setEditedClinicRecord] = useState<ClinicRecordDraft | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [sourcePreview, setSourcePreview] = useState<VaccinationRecordFilePreview | null>(null);
   const [isSourceLoading, setIsSourceLoading] = useState(false);
@@ -73,8 +75,10 @@ export default function SearchPage() {
     setIsRecordLoading(true);
     try {
       const record = await getVaccinationRecord(recordId);
+      const clinicRecord = getDisplayClinicRecord(record);
       setSelectedRecord(record);
       setEditedText(record.correctedText);
+      setEditedClinicRecord(clinicRecord);
       setIsEditing(mode === "edit");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to load record.");
@@ -147,15 +151,22 @@ export default function SearchPage() {
       return;
     }
 
+    const correctedText = editedClinicRecord
+      ? clinicRecordToText(editedClinicRecord)
+      : editedText;
+
     setIsSaving(true);
     try {
       await updateVaccinationRecord(selectedRecord.id, {
-        correctedText: editedText,
+        correctedText,
+        clinicRecord: editedClinicRecord || undefined,
         status: status || selectedRecord.status,
       });
       const refreshed = await getVaccinationRecord(selectedRecord.id);
+      const refreshedClinicRecord = getDisplayClinicRecord(refreshed);
       setSelectedRecord(refreshed);
       setEditedText(refreshed.correctedText);
+      setEditedClinicRecord(refreshedClinicRecord);
       setIsEditing(false);
       await loadRecords(query);
     } catch (error) {
@@ -302,7 +313,7 @@ export default function SearchPage() {
 
       {selectedRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <div className="flex h-[94vh] w-[min(96vw,1500px)] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="flex items-start justify-between border-b border-slate-100 p-6">
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Vaccination Record</p>
@@ -317,8 +328,8 @@ export default function SearchPage() {
               </button>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-auto lg:grid-cols-[320px_1fr]">
-              <aside className="space-y-5 border-r border-slate-100 bg-slate-50 p-6">
+            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)]">
+              <aside className="min-h-0 space-y-5 overflow-auto border-r border-slate-100 bg-slate-50 p-6">
                 <RecordFact label="Vaccine Type" value={selectedRecord.vaccineType} />
                 <RecordFact label="Vaccination Date" value={selectedRecord.vaccinationDate || "No date"} />
                 <RecordFact label="Record Year" value={selectedRecord.recordYear || "Unsorted"} />
@@ -353,11 +364,20 @@ export default function SearchPage() {
                 </div>
               </aside>
 
-              <section className="flex min-h-[520px] flex-col gap-5 p-6">
+              <section className="flex min-h-0 min-w-0 flex-col gap-5 overflow-hidden p-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-slate-800">Corrected OCR Text</h3>
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setIsEditing((value) => !value)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (isEditing && selectedRecord) {
+                          setEditedText(selectedRecord.correctedText);
+                          setEditedClinicRecord(getDisplayClinicRecord(selectedRecord));
+                        }
+                        setIsEditing((value) => !value);
+                      }}
+                    >
                       {isEditing ? "Cancel" : "Edit"}
                     </Button>
                     {isEditing && (
@@ -368,9 +388,13 @@ export default function SearchPage() {
                   </div>
                 </div>
 
-                {!isEditing && getDisplayClinicRecord(selectedRecord) ? (
+                {editedClinicRecord ? (
                   <div className="min-h-0 flex-1 overflow-auto">
-                    <ClinicRecordSummary record={getDisplayClinicRecord(selectedRecord)!} />
+                    <ClinicRecordSummary
+                      record={editedClinicRecord}
+                      isEditing={isEditing}
+                      onChange={setEditedClinicRecord}
+                    />
                   </div>
                 ) : (
                   <textarea
