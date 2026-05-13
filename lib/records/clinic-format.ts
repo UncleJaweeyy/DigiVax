@@ -88,6 +88,7 @@ export function clinicRecordFromText(text: string): ClinicRecordDraft {
   draft.patient.epiStatus = findLineValue(text, "EPI Status");
   draft.patient.feedingType = findLineValue(text, "Type of Feeding");
   draft.vaccines = splitVaccines(findLineValue(text, "Vaccine Type"));
+  draft.visits = parseVisitRows(text);
   return draft;
 }
 
@@ -114,6 +115,38 @@ function splitVaccines(value: string) {
     .split(/[,;\n]/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function parseVisitRows(text: string) {
+  const lines = text.split(/\r?\n/);
+  const headerIndex = lines.findIndex((line) => /date\s*\|\s*wt\s*\|\s*v\/s/i.test(line));
+
+  if (headerIndex < 0) {
+    return [emptyVisitRow(1)];
+  }
+
+  const visits = lines
+    .slice(headerIndex + 1)
+    .map((line, index) => {
+      const cells = line.split("|").map((cell) => cell.trim());
+      if (cells.length < 7 || cells.every((cell) => !cell)) {
+        return null;
+      }
+
+      return {
+        ...emptyVisitRow(index + 1),
+        date: cells[0] || "",
+        wt: cells[1] || "",
+        vs: cells[2] || "",
+        episode: cells[3] || "",
+        dangerSigns: cells[4] || "",
+        otherCc: cells[5] || "",
+        management: cells.slice(6).join(" | ") || "",
+      };
+    })
+    .filter((visit): visit is ClinicVisitRow => Boolean(visit));
+
+  return visits.length ? visits : [emptyVisitRow(1)];
 }
 
 function collectVisitVaccines(visits: ClinicVisitRow[]) {

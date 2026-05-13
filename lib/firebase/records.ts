@@ -24,6 +24,7 @@ import { auth, db } from "@/lib/firebase/client";
 import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { getUserProfile } from "@/lib/firebase/users";
 import { parseVaccinationText } from "@/lib/records/parser";
+import { buildSemanticChunks, rankVaccinationRecords } from "@/lib/records/semantic-search";
 
 const recordsCollection = "vaccinationRecords";
 
@@ -42,7 +43,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
 
   const correctedText = input.correctedText?.trim() || input.rawText.trim();
   const parsed = parseVaccinationText(correctedText);
-  const semanticChunks = buildSemanticChunks(input.clinicRecord);
+  const semanticChunks = buildSemanticChunks(input.clinicRecord, input.ocrMetadata, correctedText);
 
   // Store both display fields and normalized/searchable fields for fast list rendering.
   const docRef = await addDoc(collection(db, recordsCollection), {
@@ -79,32 +80,38 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
 }
 
 export async function getVaccinationRecords(queryText = ""): Promise<VaccinationRecord[]> {
-  // Keep the initial read bounded; full exports are handled by admin server actions.
+  const normalizedQuery = queryText.trim();
+  // Keep the initial browse bounded; semantic searches read the collection so matches are not hidden by recency.
   const recordsQuery = query(
     collection(db, recordsCollection),
     orderBy("createdAt", "desc"),
-    limit(100),
+    ...(normalizedQuery ? [] : [limit(100)]),
   );
 
   const snapshot = await getDocs(recordsQuery);
-  const records = snapshot.docs.map((doc) => mapRecord(doc.id, doc.data()));
-  const normalizedQuery = queryText.trim().toLowerCase();
+  const documents = snapshot.docs.map((doc) => mapRecordDocument(doc.id, doc.data()));
 
   if (!normalizedQuery) {
-    return records;
+    return documents.map(mapRecord);
   }
 
-  return records.filter((record) => {
-    const haystack = [
-      record.id,
-      record.patientName,
-      record.vaccineType,
-      record.timestamp,
-      record.status || "",
-    ].join(" ").toLowerCase();
+  return rankVaccinationRecords(documents, normalizedQuery)
+    .slice(0, 100)
+    .map((match) => ({
+      ...mapRecord(match.record),
+      searchScore: match.score,
+      matchedLabels: match.matchedLabels,
+    }));
+}
 
-    return haystack.includes(normalizedQuery);
-  });
+export async function getAllVaccinationRecordDocuments(): Promise<VaccinationRecordDocument[]> {
+  const recordsQuery = query(
+    collection(db, recordsCollection),
+    orderBy("createdAt", "desc"),
+  );
+  const snapshot = await getDocs(recordsQuery);
+
+  return snapshot.docs.map((doc) => mapRecordDocument(doc.id, doc.data()));
 }
 
 export async function getVaccinationRecord(recordId: string): Promise<VaccinationRecordDocument> {
@@ -132,7 +139,7 @@ export async function updateVaccinationRecord(
   }
 
   const parsed = parseVaccinationText(correctedText);
-  const semanticChunks = buildSemanticChunks(updates.clinicRecord);
+  const semanticChunks = buildSemanticChunks(updates.clinicRecord, undefined, correctedText);
 
   // Re-parse edited OCR text so corrected values immediately update search and dashboards.
   const payload: Record<string, unknown> = {
@@ -163,9 +170,7 @@ export async function updateVaccinationRecord(
   });
 }
 
-function mapRecord(id: string, data: Record<string, unknown>): VaccinationRecord {
-  const document = mapRecordDocument(id, data);
-
+function mapRecord(document: VaccinationRecordDocument): VaccinationRecord {
   return {
     id: document.id,
     patientName: document.patientName,
@@ -212,29 +217,6 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
     createdAt: createdAt || undefined,
     updatedAt: updatedAt || undefined,
   };
-}
-
-function buildSemanticChunks(clinicRecord?: ClinicRecordDraft) {
-  if (!clinicRecord) return [];
-
-  const patientName = clinicRecord.patient.name || "Unknown patient";
-  return clinicRecord.visits
-    .map((visit) => {
-      const findings = [
-        visit.episode && `episode ${visit.episode}`,
-        visit.dangerSigns && `danger signs ${visit.dangerSigns}`,
-        visit.otherCc,
-        visit.management && `management ${visit.management}`,
-      ]
-        .filter(Boolean)
-        .join(", ");
-      const date = visit.date || "an unspecified date";
-      const weight = visit.wt ? ` Weight: ${visit.wt}.` : "";
-      const details = findings ? ` Recorded: ${findings}.` : "";
-
-      return `Patient ${patientName} had a clinic visit on ${date}.${weight}${details}`;
-    })
-    .filter((chunk) => chunk.trim().length > 0);
 }
 
 function getString(value: unknown, fallback = "") {

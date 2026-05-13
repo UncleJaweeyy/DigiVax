@@ -6,6 +6,8 @@ export interface VaccinationRecord {
   vaccineType: string;
   timestamp: string;
   status?: "Completed" | "Pending Review";
+  searchScore?: number;
+  matchedLabels?: string[];
 }
 
 export type VaccinationRecordStatus = "Completed" | "Pending Review";

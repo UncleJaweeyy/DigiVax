@@ -18,10 +18,18 @@ import {
   RotateCcw,
   CircleCheck,
   Clock3,
+  ClipboardList,
+  BarChart3,
+  FileArchive,
 } from "lucide-react";
 import Button from "@/components/ui/Button"; 
 import type { VaccinationRecord, VaccinationRecordDocument, VaccinationRecordStatus } from "@/types/records";
-import { getVaccinationRecord, getVaccinationRecords, updateVaccinationRecord } from "@/lib/firebase/records";
+import {
+  getAllVaccinationRecordDocuments,
+  getVaccinationRecord,
+  getVaccinationRecords,
+  updateVaccinationRecord,
+} from "@/lib/firebase/records";
 import {
   getVaccinationRecordFilePreview,
   type VaccinationRecordFilePreview,
@@ -29,6 +37,8 @@ import {
 import ClinicRecordSummary from "@/components/records/ClinicRecordSummary";
 import { clinicRecordFromText, clinicRecordToText, normalizeClinicRecordDraft } from "@/lib/records/clinic-format";
 import type { ClinicRecordDraft } from "@/types/clinic-record";
+import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
+import { downloadStructuredRecordsPdf } from "@/lib/records/record-export";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -44,6 +54,10 @@ export default function SearchPage() {
   const [isSourceLoading, setIsSourceLoading] = useState(false);
   const [isPreviewRendering, setIsPreviewRendering] = useState(false);
   const [sourceZoom, setSourceZoom] = useState(1);
+  const [compiledRecords, setCompiledRecords] = useState<VaccinationRecordDocument[]>([]);
+  const [isCompiledOpen, setIsCompiledOpen] = useState(false);
+  const [isCompiledLoading, setIsCompiledLoading] = useState(false);
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -124,28 +138,47 @@ export default function SearchPage() {
     link.click();
   };
 
-  const downloadTextExport = (record: VaccinationRecordDocument) => {
-    const exportText = [
-      `Record ID: ${record.id}`,
-      `Patient Name: ${record.patientName}`,
-      `Vaccine Type: ${record.vaccineType}`,
-      `Vaccination Date: ${record.vaccinationDate || "No date"}`,
-      `Status: ${record.status}`,
-      "",
-      "Corrected OCR Text:",
-      record.correctedText,
-      "",
-      "Raw OCR Text:",
-      record.rawText,
-    ].join("\n");
+  const downloadRecordExport = (record: VaccinationRecordDocument) => {
+    const structuredRecord = withDisplayClinicRecord(record);
+    downloadStructuredRecordsPdf(
+      [structuredRecord],
+      `${record.id}-structured-record.pdf`,
+      `DigiVax Structured Record - ${record.patientName}`,
+    );
+  };
 
-    const blob = new Blob([exportText], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${record.id}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const loadCompiledRecords = async () => {
+    setIsCompiledLoading(true);
+    try {
+      const results = await getAllVaccinationRecordDocuments();
+      setCompiledRecords(results.map(withDisplayClinicRecord));
+      setIsCompiledOpen(true);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Unable to load compiled records.");
+    } finally {
+      setIsCompiledLoading(false);
+    }
+  };
+
+  const downloadAllCompiledRecords = async () => {
+    setIsExportingAll(true);
+    try {
+      const recordsToExport = compiledRecords.length
+        ? compiledRecords
+        : (await getAllVaccinationRecordDocuments()).map(withDisplayClinicRecord);
+      downloadStructuredRecordsPdf(
+        recordsToExport,
+        `digivax-compiled-records-${getTodayDateString()}.pdf`,
+        "DigiVax Compiled Digitalized Records",
+      );
+      if (!compiledRecords.length) {
+        setCompiledRecords(recordsToExport);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Unable to export compiled records.");
+    } finally {
+      setIsExportingAll(false);
+    }
   };
 
   const saveRecordChanges = async (status?: VaccinationRecordStatus) => {
@@ -180,9 +213,26 @@ export default function SearchPage() {
 
   return (
     <div className="p-8 bg-slate-50 h-full flex flex-col overflow-hidden">
-      <div className="mb-8 flex justify-between items-center">
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <h1 className="text-4xl font-bold text-slate-900">Search Record</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+           <Button
+             variant="outline"
+             className="flex items-center gap-2 border-slate-200 px-4 text-slate-600"
+             onClick={loadCompiledRecords}
+             disabled={isCompiledLoading}
+           >
+             {isCompiledLoading ? <Loader2 className="animate-spin" size={16} /> : <ClipboardList size={16} />}
+             Compiled Records
+           </Button>
+           <Button
+             className="flex items-center gap-2 px-4"
+             onClick={downloadAllCompiledRecords}
+             disabled={isExportingAll}
+           >
+             {isExportingAll ? <Loader2 className="animate-spin" size={16} /> : <FileArchive size={16} />}
+             Export All
+           </Button>
            {isLoading && <Loader2 className="animate-spin text-blue-600" size={20} />}
            <span className="text-slate-400 text-sm font-medium">
              Total Records: {records.length}
@@ -200,7 +250,7 @@ export default function SearchPage() {
           <input
             type="text"
             className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-            placeholder="Search by vaccine name, ID, or patient name..."
+            placeholder="Search by child name, vaccine, date, findings, or CRF label..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -216,6 +266,7 @@ export default function SearchPage() {
                 <th className="px-4 pb-4">Vaccine Type</th>
                 <th className="px-4 pb-4">Review Status</th>
                 <th className="px-4 pb-4">Timestamp</th>
+                <th className="px-4 pb-4">Semantic Match</th>
                 <th className="px-4 pb-4 text-center">Action</th>
               </tr>
             </thead>
@@ -236,6 +287,9 @@ export default function SearchPage() {
                   </td>
                   <td className="px-4 py-4 border-t border-slate-50 text-slate-500 text-sm">
                     {record.timestamp}
+                  </td>
+                  <td className="px-4 py-4 border-t border-slate-50">
+                    <SemanticMatchBadge record={record} query={query} />
                   </td>
                   <td className="px-4 py-4 border-t border-slate-50 last:rounded-r-2xl">
                     <div className="flex justify-center gap-2">
@@ -261,7 +315,7 @@ export default function SearchPage() {
                         className="p-2 px-2 border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
                         onClick={async () => {
                           const fullRecord = await getVaccinationRecord(record.id);
-                          downloadTextExport(fullRecord);
+                          downloadRecordExport(fullRecord);
                         }}
                         disabled={isRecordLoading}
                       >
@@ -343,6 +397,7 @@ export default function SearchPage() {
                 <RecordFact label="Vaccination Date" value={selectedRecord.vaccinationDate || "No date"} />
                 <RecordFact label="Record Year" value={selectedRecord.recordYear || "Unsorted"} />
                 <RecordStatusPanel status={selectedRecord.status} />
+                <CrfLabelSummary metadata={selectedRecord.ocrMetadata} compact />
                 <RecordFact label="Uploaded By" value={selectedRecord.createdByName} />
                 <RecordFact label="Source File" value={selectedRecord.sourceFileName || "No file"} />
 
@@ -359,9 +414,9 @@ export default function SearchPage() {
                   <Button
                     variant="outline"
                     className="flex w-full items-center justify-center gap-2"
-                    onClick={() => downloadTextExport(selectedRecord)}
+                    onClick={() => downloadRecordExport(selectedRecord)}
                   >
-                    <FileText size={16} /> Export Text
+                    <FileText size={16} /> Export PDF
                   </Button>
                   <Button
                     className={`flex w-full items-center justify-center gap-2 ${
@@ -378,7 +433,7 @@ export default function SearchPage() {
                 </div>
               </aside>
 
-              <section className="flex min-h-0 min-w-0 flex-col gap-5 overflow-hidden p-6">
+              <section className="flex min-h-0 min-w-0 flex-col gap-5 overflow-y-auto p-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-slate-800">Corrected OCR Text</h3>
                   <div className="flex gap-2">
@@ -425,10 +480,25 @@ export default function SearchPage() {
                     {selectedRecord.rawText || "No raw OCR text saved."}
                   </pre>
                 </div>
+
+                <CrfLabelSummary metadata={selectedRecord.ocrMetadata} />
               </section>
             </div>
           </div>
         </div>
+      )}
+
+      {isCompiledOpen && (
+        <CompiledRecordsModal
+          records={compiledRecords}
+          isExporting={isExportingAll}
+          onClose={() => setIsCompiledOpen(false)}
+          onDownload={downloadAllCompiledRecords}
+          onOpenRecord={(recordId) => {
+            setIsCompiledOpen(false);
+            openRecord(recordId);
+          }}
+        />
       )}
 
       {sourcePreview && (
@@ -545,6 +615,24 @@ function getDisplayClinicRecord(record: VaccinationRecordDocument) {
   return normalizeClinicRecordDraft(clinicRecordFromText(record.correctedText));
 }
 
+function withDisplayClinicRecord(record: VaccinationRecordDocument): VaccinationRecordDocument {
+  const clinicRecord = getDisplayClinicRecord(record);
+
+  return {
+    ...record,
+    clinicRecord: clinicRecord || record.clinicRecord,
+  };
+}
+
+function getTodayDateString() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function RecordFact({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -566,6 +654,196 @@ function RecordStatusBadge({ status }: { status: VaccinationRecordStatus }) {
       {isCompleted ? <CircleCheck size={13} /> : <Clock3 size={13} />}
       {status}
     </span>
+  );
+}
+
+function SemanticMatchBadge({ record, query }: { record: VaccinationRecord; query: string }) {
+  if (!query.trim() || !record.searchScore) {
+    return <span className="text-xs font-semibold text-slate-300">Latest</span>;
+  }
+
+  const score = Math.min(100, Math.round(record.searchScore * 100));
+  const labels = record.matchedLabels?.slice(0, 2).join(", ");
+
+  return (
+    <div className="min-w-32">
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-700">
+        <BarChart3 size={12} />
+        {score}% match
+      </div>
+      {labels && <p className="mt-1 text-[11px] font-semibold text-slate-400">{labels}</p>}
+    </div>
+  );
+}
+
+function CrfLabelSummary({
+  metadata,
+  compact = false,
+}: {
+  metadata?: VaccinationRecordDocument["ocrMetadata"];
+  compact?: boolean;
+}) {
+  const counts = getCrfLabelCounts(metadata);
+  const total = getCrfPredictionTotal(metadata);
+
+  if (compact) {
+    return (
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">CRF Predictions</p>
+        <div className="mt-2 flex items-center gap-2 text-sm font-black text-blue-900">
+          <BarChart3 size={18} />
+          {total} token{total === 1 ? "" : "s"}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {counts.length ? counts.slice(0, 4).map((item) => (
+            <span key={item.label} className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-blue-700">
+              {item.displayLabel}: {item.count}
+            </span>
+          )) : (
+            <span className="text-xs font-semibold text-blue-700">No CRF labels saved</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-400">
+        CRF Label Prediction Counts
+      </h3>
+      {counts.length ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-black uppercase tracking-widest text-slate-400">
+              <tr>
+                <th className="px-4 py-3">Label / Category</th>
+                <th className="px-4 py-3">Number of Predictions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {counts.map((item) => (
+                <tr key={item.label} className="border-t border-slate-100">
+                  <td className="px-4 py-3 font-bold text-slate-800">{item.displayLabel}</td>
+                  <td className="px-4 py-3 font-mono text-slate-600">{item.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 text-sm font-semibold text-slate-400">
+          No CRF token labels were saved for this record.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompiledRecordsModal({
+  records,
+  isExporting,
+  onClose,
+  onDownload,
+  onOpenRecord,
+}: {
+  records: VaccinationRecordDocument[];
+  isExporting: boolean;
+  onClose: () => void;
+  onDownload: () => void;
+  onOpenRecord: (recordId: string) => void;
+}) {
+  const totalPredictions = records.reduce((sum, record) => sum + getCrfPredictionTotal(record.ocrMetadata), 0);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="flex h-[92vh] w-[min(96vw,1500px)] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Compiled Digitalized Forms</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900">All Structured Records</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              {records.length} record{records.length === 1 ? "" : "s"} compiled, {totalPredictions} CRF prediction{totalPredictions === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button className="flex items-center gap-2 px-4" onClick={onDownload} disabled={isExporting || !records.length}>
+              {isExporting ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
+              Download All
+            </Button>
+            <button
+              onClick={onClose}
+              className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X size={22} />
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto p-6">
+          <div className="mb-6 overflow-hidden rounded-2xl border border-slate-100">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black uppercase tracking-widest text-slate-400">
+                <tr>
+                  <th className="px-4 py-3">Patient</th>
+                  <th className="px-4 py-3">Vaccine</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">CRF Predictions</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((record) => (
+                  <tr key={record.id} className="border-t border-slate-100">
+                    <td className="px-4 py-3 font-bold text-slate-800">{record.patientName}</td>
+                    <td className="px-4 py-3 text-slate-600">{record.vaccineType}</td>
+                    <td className="px-4 py-3 text-slate-600">{record.vaccinationDate || "No date"}</td>
+                    <td className="px-4 py-3"><RecordStatusBadge status={record.status} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-600">{getCrfPredictionTotal(record.ocrMetadata)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => onOpenRecord(record.id)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-6">
+            {records.map((record) => (
+              <section key={record.id} className="rounded-lg border border-slate-200 bg-white">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                  <div>
+                    <p className="font-bold text-slate-900">{record.patientName}</p>
+                    <p className="font-mono text-xs text-slate-400">{record.id}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                    <span>{record.vaccineType}</span>
+                    <span>{record.vaccinationDate || "No date"}</span>
+                    <span>{getCrfPredictionTotal(record.ocrMetadata)} CRF labels</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  {record.clinicRecord ? (
+                    <ClinicRecordSummary record={record.clinicRecord} />
+                  ) : (
+                    <pre className="max-h-72 overflow-auto rounded-lg bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
+                      {record.correctedText || "No corrected OCR text saved."}
+                    </pre>
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
