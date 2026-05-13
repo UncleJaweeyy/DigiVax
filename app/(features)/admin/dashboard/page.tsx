@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Users, UserPlus, HardDrive, ShieldCheck, Loader2, AlertTriangle, Download } from "lucide-react";
+import { Users, UserPlus, HardDrive, ShieldCheck, Loader2, AlertTriangle, Download, ClipboardCheck } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ActivityTable } from "@/components/dashboard/RecentTable";
 import { exportAllRecords, exportSessionLogs, flushSessionLogs, getAdminDashboardOverview } from "@/actions/admin/dashboard-actions";
@@ -46,6 +46,7 @@ export default function AdminDashboard() {
     switch (type) {
       case "staff": return { icon: Users, color: "text-blue-600", bg: "bg-blue-50" };
       case "access": return { icon: UserPlus, color: "text-orange-600", bg: "bg-orange-50" };
+      case "pendingRecords": return { icon: ClipboardCheck, color: "text-emerald-600", bg: "bg-emerald-50" };
       case "storage": return { icon: HardDrive, color: "text-purple-600", bg: "bg-purple-50" };
       default: return { icon: ShieldCheck, color: "text-slate-600", bg: "bg-slate-50" };
     }
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
         <p className="text-slate-500 mt-1 italic font-medium">Infrastructure & User Access Management</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {stats.map((stat, i) => {
           const config = getStatConfig(stat.type);
           return (

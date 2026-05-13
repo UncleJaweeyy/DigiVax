@@ -16,6 +16,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  CircleCheck,
+  Clock3,
 } from "lucide-react";
 import Button from "@/components/ui/Button"; 
 import type { VaccinationRecord, VaccinationRecordDocument, VaccinationRecordStatus } from "@/types/records";
@@ -212,6 +214,7 @@ export default function SearchPage() {
                 <th className="px-4 pb-4">Patient Name</th>
                 <th className="px-4 pb-4">Record ID</th>
                 <th className="px-4 pb-4">Vaccine Type</th>
+                <th className="px-4 pb-4">Review Status</th>
                 <th className="px-4 pb-4">Timestamp</th>
                 <th className="px-4 pb-4 text-center">Action</th>
               </tr>
@@ -227,6 +230,9 @@ export default function SearchPage() {
                   </td>
                   <td className="px-4 py-4 border-t border-slate-50 text-slate-600 font-medium">
                     {record.vaccineType}
+                  </td>
+                  <td className="px-4 py-4 border-t border-slate-50">
+                    <RecordStatusBadge status={record.status || "Pending Review"} />
                   </td>
                   <td className="px-4 py-4 border-t border-slate-50 text-slate-500 text-sm">
                     {record.timestamp}
@@ -317,7 +323,10 @@ export default function SearchPage() {
             <div className="flex items-start justify-between border-b border-slate-100 p-6">
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Vaccination Record</p>
-                <h2 className="mt-1 text-2xl font-bold text-slate-900">{selectedRecord.patientName}</h2>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl font-bold text-slate-900">{selectedRecord.patientName}</h2>
+                  <RecordStatusBadge status={selectedRecord.status} />
+                </div>
                 <p className="mt-1 font-mono text-xs text-slate-400">{selectedRecord.id}</p>
               </div>
               <button
@@ -333,7 +342,7 @@ export default function SearchPage() {
                 <RecordFact label="Vaccine Type" value={selectedRecord.vaccineType} />
                 <RecordFact label="Vaccination Date" value={selectedRecord.vaccinationDate || "No date"} />
                 <RecordFact label="Record Year" value={selectedRecord.recordYear || "Unsorted"} />
-                <RecordFact label="Status" value={selectedRecord.status} />
+                <RecordStatusPanel status={selectedRecord.status} />
                 <RecordFact label="Uploaded By" value={selectedRecord.createdByName} />
                 <RecordFact label="Source File" value={selectedRecord.sourceFileName || "No file"} />
 
@@ -355,11 +364,16 @@ export default function SearchPage() {
                     <FileText size={16} /> Export Text
                   </Button>
                   <Button
-                    className="flex w-full items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700"
+                    className={`flex w-full items-center justify-center gap-2 ${
+                      selectedRecord.status === "Completed"
+                        ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                        : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
                     onClick={() => saveRecordChanges("Completed")}
                     disabled={isSaving || selectedRecord.status === "Completed"}
                   >
-                    <CheckCircle size={16} /> Mark Completed
+                    <CheckCircle size={16} />
+                    {selectedRecord.status === "Completed" ? "Review Completed" : "Mark Review Completed"}
                   </Button>
                 </div>
               </aside>
@@ -536,6 +550,50 @@ function RecordFact({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
       <p className="mt-1 break-words text-sm font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function RecordStatusBadge({ status }: { status: VaccinationRecordStatus }) {
+  const isCompleted = status === "Completed";
+
+  return (
+    <span className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+      isCompleted
+        ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+        : "border-orange-100 bg-orange-50 text-orange-700"
+    }`}>
+      {isCompleted ? <CircleCheck size={13} /> : <Clock3 size={13} />}
+      {status}
+    </span>
+  );
+}
+
+function RecordStatusPanel({ status }: { status: VaccinationRecordStatus }) {
+  const isCompleted = status === "Completed";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${
+      isCompleted ? "border-emerald-100 bg-emerald-50" : "border-orange-100 bg-orange-50"
+    }`}>
+      <p className={`text-[10px] font-black uppercase tracking-widest ${
+        isCompleted ? "text-emerald-700" : "text-orange-700"
+      }`}>
+        Review Status
+      </p>
+      <div className={`mt-2 flex items-center gap-2 text-sm font-black ${
+        isCompleted ? "text-emerald-800" : "text-orange-800"
+      }`}>
+        {isCompleted ? <CircleCheck size={18} /> : <Clock3 size={18} />}
+        {status}
+      </div>
+      <p className={`mt-2 text-xs font-medium leading-5 ${
+        isCompleted ? "text-emerald-700" : "text-orange-700"
+      }`}>
+        {isCompleted
+          ? "This record has been reviewed and removed from pending records."
+          : "This record still counts under pending records until review is completed."}
+      </p>
     </div>
   );
 }

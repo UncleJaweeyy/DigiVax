@@ -41,9 +41,10 @@ export const getAdminDashboardOverview = async (
   await assertAdmin(idToken);
 
   // Load dashboard cards and recent activity together to keep the page responsive.
-  const [usersSnapshot, recordsSnapshot, auditSnapshot] = await Promise.all([
+  const [usersSnapshot, recordsSnapshot, pendingRecordsSnapshot, auditSnapshot] = await Promise.all([
     adminDb.collection(usersCollection).get(),
     adminDb.collection(recordsCollection).orderBy("createdAt", "desc").limit(100).get(),
+    adminDb.collection(recordsCollection).where("status", "==", "Pending Review").count().get(),
     adminDb.collection(auditLogsCollection).orderBy("createdAt", "desc").limit(5).get(),
   ]);
 
@@ -53,6 +54,7 @@ export const getAdminDashboardOverview = async (
     data: doc.data(),
   }));
   const pendingUsers = users.filter((user) => user.status === "Pending").length;
+  const pendingRecords = pendingRecordsSnapshot.data().count;
   const sourceFiles = records.filter(
     (record) => typeof record.data.sourceStoragePath === "string" && record.data.sourceStoragePath,
   ).length;
@@ -70,6 +72,12 @@ export const getAdminDashboardOverview = async (
         value: String(pendingUsers),
         type: "access",
         desc: "Waiting activation",
+      },
+      {
+        label: "Pending Records",
+        value: String(pendingRecords),
+        type: "pendingRecords",
+        desc: "Waiting review",
       },
       {
         label: "Source Files",
