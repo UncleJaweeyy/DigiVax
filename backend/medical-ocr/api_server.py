@@ -37,10 +37,12 @@ import cv2
 import numpy as np
 
 from ocr_engine import MedicalOCREngine
+from crf_postprocessor import OptionalCrfPostProcessor, crf_enabled_from_env
 
 # ── configuration (env-overridable for Cloud Run) ─────────────────────────
 MODEL_DIR  = os.getenv("MODEL_DIR",  "./model")
 DICT_PATH  = os.getenv("DICT_PATH",  "./model/custom_dict.txt")
+CRF_MODEL_PATH = os.getenv("CRF_MODEL_PATH", "./model/crf_model.crfsuite")
 LOG_LEVEL  = os.getenv("LOG_LEVEL",  "INFO")
 MAX_FILE_MB = int(os.getenv("MAX_FILE_MB", "20"))
 OCR_API_KEY = os.getenv("OCR_API_KEY", "").strip()
@@ -79,14 +81,19 @@ app.add_middleware(
 
 # ── global engine (loaded at startup) ────────────────────────────────────
 _engine: Optional[MedicalOCREngine] = None
+_crf_postprocessor: Optional[OptionalCrfPostProcessor] = None
 _startup_error: Optional[str] = None
 
 
 @app.on_event("startup")
 async def startup():
-    global _engine, _startup_error
+    global _engine, _crf_postprocessor, _startup_error
     try:
         _engine = MedicalOCREngine(model_dir=MODEL_DIR, dict_path=DICT_PATH)
+        _crf_postprocessor = OptionalCrfPostProcessor(
+            model_path=CRF_MODEL_PATH,
+            enabled=crf_enabled_from_env(),
+        )
         log.info("Engine loaded successfully")
     except Exception as exc:
         _startup_error = str(exc)
@@ -134,6 +141,24 @@ def _result_to_dict(result) -> dict:
         "avg_confidence": result.avg_confidence,
         "model_info": result.model_info,
     }
+
+
+def _apply_crf_postprocessing(result) -> dict:
+    if _crf_postprocessor is None:
+        return {"enabled": False, "available": False, "reason": "not initialized"}
+
+    try:
+        return _crf_postprocessor.annotate_result(result)
+    except Exception as exc:
+        log.warning("CRF post-processing failed: %s", exc)
+        result.model_info["crf_postprocessor"] = "failed"
+        result.model_info["crf_error"] = str(exc)
+        return {
+            "enabled": _crf_postprocessor.enabled,
+            "available": False,
+            "reason": str(exc),
+            "model_path": str(_crf_postprocessor.model_path),
+        }
 
 
 def _result_to_markdown(result) -> str:
@@ -1255,6 +1280,7 @@ async def root():
         "service": "PP-OCRv5 Medical Form OCR",
         "status": "ready" if _engine else "initialising",
         "model": MedicalOCREngine.MODEL_INFO,
+        "crf_postprocessor": _crf_postprocessor.status() if _crf_postprocessor else None,
         "endpoints": ["/ocr", "/predict", "/predict/batch", "/validate", "/health"],
     }
 
@@ -1293,6 +1319,7 @@ async def predict(
     tmp = await _save_upload(file)
     try:
         result = engine.run(tmp)
+        _apply_crf_postprocessing(result)
     finally:
         Path(tmp).unlink(missing_ok=True)
 
@@ -1318,6 +1345,7 @@ async def ocr(
     tmp = await _save_upload(file)
     try:
         result = engine.run(tmp)
+        crf_status = _apply_crf_postprocessing(result)
 
         text = _digivax_text(result)
         if not text:
@@ -1328,6 +1356,9 @@ async def ocr(
             "confidence": result.avg_confidence,
             "fields": _digivax_fields(result),
             "clinicRecord": _clinic_record_from_result(result, tmp),
+            "informationExtraction": {
+                "crf": crf_status,
+            },
             "raw": _result_to_dict(result),
         }
 
@@ -1359,6 +1390,7 @@ async def predict_batch(
         tmp = await _save_upload(upload)
         try:
             r = engine.run(tmp)
+            _apply_crf_postprocessing(r)
             results.append(_result_to_dict(r))
         except Exception as exc:
             results.append({"file_name": upload.filename, "error": str(exc)})
@@ -1393,6 +1425,7 @@ async def validate(
     tmp = await _save_upload(file)
     try:
         result = engine.run(tmp)
+        _apply_crf_postprocessing(result)
         report = engine.validate(result, gt)
     finally:
         Path(tmp).unlink(missing_ok=True)

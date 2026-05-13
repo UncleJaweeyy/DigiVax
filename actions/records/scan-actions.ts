@@ -43,6 +43,9 @@ interface OcrRawResponse {
     value?: string;
     confidence?: number;
     bbox?: number[];
+    crf_label?: string;
+    row?: number;
+    section?: OcrTokenMetadata["section"];
   }>;
   image_size?: number[];
   processing_time_ms?: number;
@@ -143,9 +146,9 @@ function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefin
       y,
       w: roundNumber(x2 - x1),
       h: roundNumber(y2 - y1),
-      row: 0,
-      section: inferTokenSection(y, x, imageSize),
-      label: typeof item.field === "string" && item.field.trim() ? item.field.trim() : "TEXT",
+      row: typeof item.row === "number" ? item.row : -1,
+      section: normalizeTokenSection(item.section) || inferTokenSection(y, x, imageSize),
+      label: getTokenLabel(item),
       bbox,
     };
 
@@ -156,7 +159,9 @@ function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefin
     tokens.push(token);
   }
 
-  assignTokenRows(tokens);
+  if (tokens.some((token) => token.row < 0)) {
+    assignTokenRows(tokens);
+  }
 
   if (!tokens.length && !imageSize) {
     return undefined;
@@ -173,6 +178,32 @@ function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefin
     modelInfo: normalizeModelInfo(raw?.model_info),
     tokens,
   };
+}
+
+function getTokenLabel(item: NonNullable<OcrRawResponse["recognized_text"]>[number]) {
+  if (typeof item.crf_label === "string" && item.crf_label.trim()) {
+    return item.crf_label.trim();
+  }
+
+  if (typeof item.field === "string" && item.field.trim()) {
+    return item.field.trim();
+  }
+
+  return "TEXT";
+}
+
+function normalizeTokenSection(value: unknown): OcrTokenMetadata["section"] | null {
+  if (
+    value === "HEADER"
+    || value === "PATIENT_INFORMATION"
+    || value === "NUTRITIONAL_STATUS"
+    || value === "TABLE_RECORDS"
+    || value === "UNKNOWN"
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 function normalizeImageSize(value?: number[]): [number, number] | null {

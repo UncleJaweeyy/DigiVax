@@ -29,6 +29,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # ── application code ───────────────────────────────────────────────────────
 COPY ocr_engine.py    ./ocr_engine.py
 COPY api_server.py    ./api_server.py
+COPY crf_postprocessor.py ./crf_postprocessor.py
 COPY cli_infer.py     ./cli_infer.py
 
 # ── model artefacts ────────────────────────────────────────────────────────
@@ -37,9 +38,11 @@ COPY model/   ./model/
 # ── environment ────────────────────────────────────────────────────────────
 ENV MODEL_DIR=/app/model \
     DICT_PATH=/app/model/custom_dict.txt \
+    CRF_MODEL_PATH=/app/model/crf_model.crfsuite \
     LOG_LEVEL=INFO \
     MAX_FILE_MB=20 \
     MEDICAL_OCR_PIPELINE=hybrid \
+    MEDICAL_OCR_ENABLE_CRF=false \
     PADDLEOCR_DET_MODEL=PP-OCRv5_mobile_det \
     PADDLEOCR_REC_MODEL=PP-OCRv5_mobile_rec \
     DISABLE_MODEL_SOURCE_CHECK=True \

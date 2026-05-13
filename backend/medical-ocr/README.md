@@ -9,6 +9,7 @@ It is separate from `backend/ocr`, which is the default PaddleOCR demo service c
 ```text
 api_server.py          FastAPI API with original /predict and DigiVax /ocr endpoints
 ocr_engine.py          Medical OCR engine with PaddleOCR PP-OCRv5 pipeline and custom fallback
+crf_postprocessor.py   Optional CRF token-label annotator for information extraction
 cli_infer.py           CLI runner for local image tests
 Dockerfile             Cloud Run container definition
 requirements.txt       Python dependencies installed after PaddlePaddle
@@ -22,6 +23,7 @@ model/inference.json
 model/inference.pdiparams
 model/inference.yml
 model/custom_dict.txt
+model/crf_model.crfsuite
 ```
 
 Do not copy the original `.venv`, `__pycache__`, large training folders, or thesis backup datasets into this backend.
@@ -86,6 +88,13 @@ Extra response fields:
 ```json
 {
   "markdown": "# OCR Result...",
+  "informationExtraction": {
+    "crf": {
+      "enabled": false,
+      "available": false,
+      "reason": "disabled"
+    }
+  },
   "clinicRecord": {
     "patient": {},
     "vaccines": [],
@@ -98,6 +107,30 @@ Extra response fields:
   }
 }
 ```
+
+## Optional CRF Classifier
+
+The developer's CRF classifier is integrated as an optional post-processing annotator. It does not replace the current OCR text or `clinicRecord` extraction. When enabled, it adds CRF labels, rows, and sections to `raw.recognized_text` tokens so the web app can store better metadata for search, review, and future BioBERT/vector retrieval.
+
+It is disabled by default for safety:
+
+```powershell
+$env:MEDICAL_OCR_ENABLE_CRF="false"
+```
+
+Enable it only after the base `/ocr` endpoint works:
+
+```powershell
+$env:MEDICAL_OCR_ENABLE_CRF="true"
+$env:CRF_MODEL_PATH="./model/crf_model.crfsuite"
+```
+
+Safe fallback behavior:
+
+- If `MEDICAL_OCR_ENABLE_CRF` is not true, the OCR API behaves like before.
+- If the CRF model or `pycrfsuite` cannot load, the API logs a warning and still returns the normal OCR response.
+- If CRF annotation fails on one request, the API keeps the normal OCR response and records the failure under `raw.model_info`.
+- `clinicRecord` remains produced by the existing geometry/checkmark extractor until the CRF output has been validated against real clinic scans.
 
 ## Supported File Types
 
@@ -191,6 +224,15 @@ gcloud run deploy digivax-medical-ocr `
   --project digivax-54700
 ```
 
+To test CRF labels in Cloud Run without changing the main extraction behavior:
+
+```powershell
+gcloud run services update digivax-medical-ocr `
+  --region asia-southeast1 `
+  --project digivax-54700 `
+  --set-env-vars MEDICAL_OCR_ENABLE_CRF=true
+```
+
 After deployment, test:
 
 ```powershell
@@ -218,6 +260,7 @@ firebase deploy --only apphosting:digivax --project digivax-54700
 - Set `MEDICAL_OCR_PIPELINE=hybrid` to test PP-OCRv5 detection with the custom fine-tuned recognizer on detected crops.
 - The server models are more accurate but heavier; increase Cloud Run memory/CPU if cold starts or inference time become an issue.
 - Set `MEDICAL_OCR_PIPELINE=custom` to force the older OpenCV-region detector plus custom recognition model fallback.
+- Set `MEDICAL_OCR_ENABLE_CRF=true` to add CRF token labels under `raw.recognized_text[*].crf_label`; keep it off if you are only validating OCR speed or base extraction.
 - The Cloud Run service is public for reachability, but inference endpoints require `OCR_API_KEY` when configured.
 - `/health` is intentionally public.
 - Keep the model artifacts in `model/`; the service validates those paths on startup.
