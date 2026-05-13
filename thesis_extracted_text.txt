@@ -1,0 +1,1823 @@
+
+--- PAGE 1 ---
+DigiVax: A Hybrid OCR-NLP Pipeline for Automated Digitization and 
+Retrieval of Vaccination Records 
+ 
+ 
+ 
+ 
+ 
+An Undergraduate Thesis 
+Presented to the Faculty of 
+Computer Science Department 
+BICOL UNIVERSITY COLLEGE OF SCIENCE 
+Legazpi City 
+ 
+ 
+ 
+ 
+ 
+In Partial Fulfillment of the 
+Requirements for the Degree of 
+BACHELOR OF SCIENCE IN COMPUTER SCIENCE 
+ 
+ 
+ 
+ 
+Basilla, Allen B. 
+Belludo, Maria Princess Angela M. 
+Millan, Ericka Maelene M. 
+ 
+ 
+ 
+DECEMBER 2025 
+
+--- PAGE 2 ---
+  
+   P a g e  | 1 
+Introduction 
+ CHAPTER 1 
+ 
+INTRODUCTION 
+ 
+ 
+Background of the Study 
+Barangay Health Centers in the Philippines still rely heavily on handwritten 
+records for immunization and patient information. While these documents remain 
+the official source of health data, they are increasingly inefficient and prone to 
+errors. Handwritten records can be difficult to read, misplaced, or damaged over 
+time, while manual searching consumes valuable time that health workers could 
+otherwise spend on patient care (Katurura & Cilliers, 2018). In barangay health 
+centers, some forms and tables are  printed. But most patient records and 
+vaccination logs are written by hand. This mixture makes traditional record-keeping 
+more prone to inconsistencies and harder to manage. To address these 
+challenges, this study proposes the development of a digital hea lth record 
+management system that integrates Optical Character Recognition (OCR), Natural 
+Language Processing (NLP), Image Processing, and Cloud Integration. OCR will 
+be used to recognize both handwritten entries and printed elements, while NLP will 
+enable intelligent classification and retrieval. Image processing will enhance the 
+clarity of scanned documents, and cloud integ ration will ensure secure and 
+accessible storage.  
+Studies show that paper files are vulnerable to misplacement, deterioration, 
+and environmental damage, making long -term preservation difficult. In addition, 
+handwritten records have been associated with issues such as unclear writing, 
+incompleteness, inconsistent terminology, and difficulty in retrieval (Akhu -Zaheya 
+
+--- PAGE 3 ---
+  
+   P a g e  | 2 
+Introduction 
+ et al., 2018). Further, manual retrieval from large volumes of records is slow and 
+time-consuming, hindering the ability of healthcare workers to quickly access 
+patient information (Katurura & Cilliers, 2018). And these limitations often delay 
+healthcare d elivery and reduce the accuracy of services provided in barangay 
+health centers. By contrast, digital methods such as Optical Character Recognition 
+(OCR) and Natural Language Processing (NLP)   make these processes much 
+smoother and faster, eliminating the hassle  of manual typing to digitize. Further 
+OCR, the digitization process is more comfortable as the document can be 
+scanned, processed with little effort. (Jayoma, J. M., Moyon, E. S., & Morales, E. 
+M. O. 2021 )  
+Image processing is an important step before applying OCR because it 
+prepares scanned or photographed documents to make them clearer and easier 
+to read. Since many barangay health records are handwritten or have faded text, 
+techniques such as noise removal , adjusting contrast, and separating text areas 
+can be used. These improvements help reduce recognition errors and allow the 
+system to capture the correct information from the records.  Point in case, Optical 
+Character Recognition (OCR) enables the automati c conversion of scanned or 
+printed text into machine -readable data. This is especially useful for barangay 
+health centers, which often handle many handwritten vaccination logs and patient 
+forms. OCR reduces the need for manual data entry, lowers the chance of errors, 
+and helps preserve historical health records over time. For example, the Tesseract 
+OCR engine has been described in detail and evaluated for its recognition 
+accuracy in converting scanned documents into text. Tesseract is one of the most 
+
+--- PAGE 4 ---
+  
+   P a g e  | 3 
+Introduction 
+ used OCR engines because it is open source and provides relatively good 
+accuracy in text recognition. (Sporici, Cușnir, & Boiangiu, 2020, p. 1) 
+On the other hand, Natural Language Processing (NLP) supports efficient 
+retrieval of health records by allowing users to use everyday language. Instead of 
+exact keyword searches, health workers can make queries like “Find Pedro’s 
+vaccination record in 2022”  or “List children missing immunizations.”  Techniques 
+such as entity recognition and classification improve both search accuracy and 
+usability, making systems more friendly for users who are not tech experts. A 
+systematic review has shown how NLP is applied in electronic health records to 
+improve decision-making and information extraction (Hossain, Rana, Higgins, et 
+al., 2023).  
+The integration of cloud services represents a critical challenge in modern 
+IT environments, as it enables seamless interoperability between heterogeneous 
+systems, reduces operational silos, and supports agile business processes in 
+multi-cloud architectures (Cristescu-Pompiliu, M., & others. 2021).  Therefore for 
+barangay health centers with limited infrastructure, cloud solutions reduce 
+dependence on local servers while allowing authorized access from multiple 
+locations. Cloud integration also improves resilience against disasters that could 
+damage physical records. For instance, Philips’ HealthSuite Imaging Cloud shows 
+how medical imaging and health data can be securely stored and accessed via 
+cloud platforms, enhancing availability and collaboration across locations (Philips, 
+HealthSuite Imaging). The integration of Image Processing, OCR, NLP, and cloud 
+technologies addresses the major weaknesses of paper -based health records. 
+
+--- PAGE 5 ---
+  
+   P a g e  | 4 
+Introduction 
+ Image Processing ensures that even low -quality or handwritten documents are 
+readable for OCR, which then digitizes the text into searchable files. NLP 
+enhances the usability of the system by allowing natural language queries, 
+reducing the need for technical training among staff. Cloud integration offers new 
+opportunities to streamline the business processes in organizations  ( Cristescu-
+Pompiliu, M., & others. 2021). Therefore , cloud integration secures and centralizes 
+these records, ensuring accessibility, scalability, and disaster resilience;  
+Together, these technologies create a comprehensive system that 
+improves the accuracy, speed, and reliability of health record management in 
+barangay health centers. More importantly, they enable health workers to focus on 
+providing patient care rather tha n struggling with manual paperwork. By 
+modernizing record management, this study contributes to building a stronger 
+digital health infrastructure for local communities in the Philippines. 
+Objectives of the Study  
+The main objective of this study is to develop and implement a digital health 
+record management system for barangay health centers . The study specifically 
+aims to address the following objectives:  
+1. To gather data from handwritten health records using OCR to accurately 
+extract and digitize information from manually written vaccination and 
+medical entries. 
+2. To process OCR-generated vaccination record data using TF-IDF and SVM 
+for automated component classification and to apply BioBERT embeddings 
+for semantic retrieval of vaccination information.   
+
+--- PAGE 6 ---
+  
+   P a g e  | 5 
+Introduction 
+ 3. To design and develop the core features of the digital health record 
+management system web application, including secure login, automated 
+record categorization, digitization of record, and cloud-based storage.  
+4. To evaluate the recognition and classification performance of the OCR and 
+NLP modules using standard metrics (accuracy, precision, recall, and F1 
+score). 
+Significance of the Research  
+The significance of the study outlines the potential impact of the research 
+on various stakeholders. Below are the key beneficiaries who will gain from this 
+study: 
+Barangay Health Workers. This system will reduce their manual workload 
+by digitizing handwritten vaccination and patient records, allowing faster access 
+and minimizing errors during retrieval. 
+Patients. Patients will benefit from more accurate and timely health 
+services since their records can be retrieved quickly and reliably, improving the 
+quality of care they receive. 
+Healthcare Professionals and Administrators.  Doctors, nurses, and 
+barangay health center administrators will have access to accurate and reliable 
+digital data, which can improve reporting, decision -making, and program 
+evaluation. 
+Local Government Units (LGUs).  Since LGUs oversee barangay health 
+centers, the system will help them monitor vaccination coverage more effectively, 
+allocate resources properly, and strengthen community health programs. 
+
+--- PAGE 7 ---
+  
+   P a g e  | 6 
+Introduction 
+ Department of Health (DOH).  The system supports the DOH’s long -term 
+goal of transitioning towards nationwide digital health records. It also assists in 
+reporting, policy-making, and health program evaluation at the national level. 
+Researchers. The study contributes to digital health informatics and can 
+serve as a reference for future academic and scientific work in the field of health 
+technology. 
+Future Developers. This project can act as a foundation for more advanced 
+digital health record management systems, encouraging further innovation and 
+system improvements. 
+Scope and Limitations of the Project  
+The scope of this study centers on the design, development, and 
+implementation of a digital health record management system intended for 
+barangay health centers, with a primary focus on automating the digitization and 
+retrieval of child vaccination records . The system integrates Optical Character 
+Recognition (OCR) and Natural Language Processing (NLP) techniques to extract 
+handwritten vaccination entries, classify relevant information, and support efficient 
+digital access to immunization data. Its overarchi ng purpose is to replace manual 
+record handling with a more organized and intelligent digital platform that supports 
+community-level vaccination monitoring. 
+A major component of the study’s scope is the collection and preparation of 
+240 handwritten vaccination records, which serve as the primary data source for 
+OCR processing. The study will gather actual child immunization records from 
+selected barangay health centers containing handwritten entries such as vaccine 
+
+--- PAGE 8 ---
+  
+   P a g e  | 7 
+Introduction 
+ names, vaccination dates, and basic patient information. These records typically 
+feature printed tables supplemented with handwritten details, making them 
+suitable for evaluating OCR performance. Once collected, the records will undergo 
+preprocessing proce dures, including scanning, field standardization, and data 
+cleaning to address missing, inconsistent, or unclear entries. 
+The study also involves the fine-tuning and evaluation of the selected OCR 
+model, emphasizing the accurate detection and digitization of handwritten entries 
+commonly found in vaccination logbooks. PaddleOCR will be utilized to process 
+both printed labels a nd handwritten text, converting these into structured digital 
+data. This enables the system to capture essential vaccination information and 
+minimize manual transcription. 
+TF-IDF vectorization will be used to transform the OCR -generated 
+vaccination record text into numerical feature representations, while a Support 
+Vector Machine (SVM) classifier will automatically categorize and label key 
+components such as vaccine names, administration dates, and patient identifiers. 
+This automated classification enables the system to organize extracted 
+vaccination information into predefined categories without manual tagging. In 
+addition, BioBERT will be applied exclusively for embedding -based semantic 
+retrieval, generating contextual embeddings that allow the system to retrieve 
+vaccination information based on meaning rather than exact keyword matches. 
+Through BioBERT embeddings, the system can perform context -aware searches 
+within digitiz ed records, supporting more flexible and accurate retrieval of 
+vaccination details. 
+
+--- PAGE 9 ---
+  
+   P a g e  | 8 
+Introduction 
+ Furthermore, the scope includes the design and development of the core 
+features of the web-based health record management application. These features 
+include secure login to ensure that only authorized barangay health workers can 
+access sensitive child vac cination data. The application will support automated 
+categorization of digitized records, direct digitization of scanned entries, and 
+centralized cloud -based storage to ensure accessible and reliable data 
+management across devices. The platform is intende d to streamline existing 
+workflows by allowing health workers to efficiently store, retrieve, and manage 
+digitized child vaccination records. 
+The assessment of the system’s overall efficacy will focus exclusively on 
+the performance of the implemented algorithms and technical components. 
+Performance criteria such as accuracy, precision, recall, F1 score, and processing 
+efficiency will be used to evaluate the OCR and NLP modules responsible for the 
+digitization, categorization, and retrieval of vaccination records. These metrics will 
+determine how effectively the system recognizes handwritten text, classifies 
+extracted information, and retrieves relevant vaccination data. The evaluation will 
+be limited to technical performance testing and will not include user -centered 
+usability assessments or performance evaluations involving barangay personnel. 
+Finally, the study acknowledges several limitations. Although the system employs 
+secure login, it does not include advanced authentication mechanisms such as 
+biometrics, multifactor authentication, or intrusion detection, as these fall outside 
+the project’ s scope. OCR accuracy may vary depending on factors such as 
+handwriting style, scan quality, and image clarity, requiring manual verification of 
+
+--- PAGE 10 ---
+  
+   P a g e  | 9 
+Introduction 
+ extracted text. While TF -IDF and SVM enable effective keyword -based 
+classification, they provide limited semantic interpretation. The performance of 
+BioBERT, used strictly for embedding-based retrieval, depends on available fine -
+tuning data and may require  significant computational resources, which could 
+affect real-time performance in low-resource environments. 
+Further, the system depends on cloud -based storage, which may be 
+affected by unstable internet connections, particularly in rural barangays. Offline 
+access will support only basic synchronization and will not include advanced 
+conflict resolution for concur rent editing. The application’s scope will initially be 
+limited to handling vaccination records and will not include broader medical data 
+such as imaging files, medications, or diagnostics. Features such as UI 
+customization, advanced reporting, and analytics are outside the current scope of 
+deployment, which will be restricted to selected barangay health centers. 
+Definition of Terms 
+The following terms related to the research are defined operationally for 
+better understanding: 
+Algorithms – A set of computational methods, like TF-IDF, employed to analyze, 
+extract, and process relevant information from records in the digital health record 
+management system. 
+Image Processing - Computer algorithms and signal processing techniques are 
+used to improve the quality of digital or analog images, extract important 
+information, and prepare them for specific tasks such as viewing or analysis. 
+
+--- PAGE 11 ---
+  
+   P a g e  | 10 
+Introduction 
+ Natural Language Processing  - a branch of artificial intelligence (AI) and 
+computer science that allows computers to comprehend, interpret, and generate 
+human language in both written and spoken form. 
+Optical Character Recognition- Text-image conversion technique that converts 
+scanned documents, photos, or videos into machine -encoded, machine-readable 
+text. This procedure enables computers to process and retain information in text 
+ format, allowing for tasks such as searching, editing, and data extraction from 
+documents that would otherwise exist as images. 
+Term Frequency –Inverse Document Frequency  (TF-IDF) - is a statistical 
+method used in natural language processing and information retrieval to evaluate 
+how important a word is to a document in relation to a larger collection of 
+documents. 
+Support Vect or Machine (SVM)  - is a supervised machine learning algorithm 
+used for classification and regression tasks. In this study, it ensures the data from 
+the OCR is classified into categories. 
+BioBERT - is a domain -specific language representation model pre -trained on 
+large-scale biomedical corpora. In this study, it retrieves the embedded vaccination 
+records after the OCR process. 
+Fine-Tuning - entails techniques to further train a model whose weights have 
+already been updated through prior training. Using the base model’s previous 
+knowledge as a starting point, fine -tuning tailors the model by training it on a 
+smaller, task-specific dataset.  
+  
+
+--- PAGE 12 ---
+  
+   P a g e  | 11 
+Review of Related Literature and Studies 
+ 
+CHAPTER 2 
+ 
+REVIEW OF RELATED LITERATURE AND STUDIES 
+ 
+ 
+This chapter's goal is to provide a thorough analysis of academic 
+publications and research that provide the theoretical and empirical underpinnings 
+for the suggested system, a platform for digitizing and retrieving health records that 
+integrates optical c haracter recognition (OCR), natural language processing 
+(NLP), image processing, and cloud -based storage for Philippine community 
+health centers. This review outlines the fundamental technological ideas that 
+support the study, charts the development of OCR  and NLP applications in 
+healthcare informatics, and pinpoints current obstacles and unmet research needs 
+in the field of digitizing printed and handwritten medical records. The study is linked 
+to the larger digital transformation of community -based healthcare systems since 
+it also looks at how these technologies help to increase the precision, usability, 
+and effectiveness of health data management. 
+Digital Transformation in Community Health Records 
+Automation of information extraction has been transformed by the 
+development of artificial intelligence and machine learning, especially in the 
+healthcare industry where accuracy, efficiency, and data accessibility are critical. 
+Barangay health centers' tr aditional recordkeeping procedures mostly rely on 
+printed forms and handwritten vaccination logs, which are prone to human error, 
+loss, and damage. A revolutionary framework for digitizing such handwritten 
+medical records is offered by the combination of o ptical character recognition 
+
+--- PAGE 13 ---
+  
+   P a g e  | 12 
+Review of Related Literature and Studies 
+(OCR), natural language processing (NLP), image processing, and cloud 
+computing. These technologies work together to create a strong pipeline: cloud 
+services guarantee safe, centralized, and easily accessible storage for health data; 
+OCR extracts handwritten and printed text; NLP facilitates semantic classification 
+and natural language retrieval; and image processing improves the visual quality 
+of scanned records. In developing countries like the Philippines, the literature 
+reflects a significant shift towa rd data-driven community healthcare systems due 
+to the increasing convergence of these technologies (Parikshit Sharma, 2023; 
+Geeta S. Hukkeri et al., 2021). 
+Development of Optical Character Recognition 
+This change has been largely attributed to recent developments in OCR 
+algorithms. The character-matching heuristics and rule -based templates used by 
+early OCR systems did not perform well on handwritten or damaged documents. 
+To automatically learn textual and spatial patterns from raw pixel data, modern 
+OCR frameworks instead use deep learning models, such as transformer -based 
+architectures, recurrent neural networks (RNNs), and convolutional neural 
+networks (CNNs) (Parikshit Sharma, 2023; Parth Hasmukh Jai n et al, 2023). 
+Because of its Long Short -Term Memory (LSTM) engine, which captures 
+sequential dependencies and increases recognition accuracy, Tesseract OCR is 
+still a popular open -source system for printed text (Sporici, Cușnir, & Boiangiu, 
+2020). According to comparative studies, PaddleOCR, a CNN-Transformer hybrid 
+architecture, performs better on both cursive and free -form handwriting (Parth 
+Hasmukh Jain et al., 2023). Cloud -based engines like Google Cloud Vision and 
+
+--- PAGE 14 ---
+  
+   P a g e  | 13 
+Review of Related Literature and Studies 
+Amazon Textract outperform conventional tools, achieving up to 97 –98 percent 
+precision and recall on noisy or blurred text, according to evaluations of existing 
+OCR frameworks (Geeta S. Hukkeri et al., 2021). However, open -source 
+alternatives like Tesseract and PaddleOCR are more feasible for small, resource-
+constrained settings like barangay health centers due to their cost and 
+dependence on internet connectivity. Together, these studies demonstrate that 
+when digitizing mixed -format vaccination logs, highe r fidelity is ensured by 
+combining Tesseract for printed headers and PaddleOCR for handwritten entries. 
+The importance of image preprocessing as a factor influencing recognition 
+accuracy is a fundamental finding in OCR research. Aged paper, faded ink, and 
+uneven lighting all contribute to the inconsistencies found in many handwritten 
+health records. Preproce ssing techniques like noise reduction, threshold 
+adjustment, deskewing, and contrast enhancement have been shown empirically 
+to significantly lower recognition errors (Sporici et al., 2020). Convolution -based 
+preprocessing, in particular, enhances character segmentation, making it possible 
+for OCR systems to more precisely identify and isolate text areas (Saman Idrees 
+and Hossein Hassani, 2021). When dealing with irregular layouts or low -quality 
+scans, hybrid or multi -stage pipelines produce the most depend able results, 
+according to other studies comparing text detection algorithms, including the 
+Stroke Width Transform (SWT), Connectionist Text Proposal Network (CTPN), and 
+the Efficient and Accurate Scene Text (EAST) detector (Parth Hasmukh Jain et al., 
+2023). These results confirm that preprocessing is incorporated into the OCR 
+workflow of the suggested system to guarantee accurate recognition and 
+
+--- PAGE 15 ---
+  
+   P a g e  | 14 
+Review of Related Literature and Studies 
+digitization of printed and handwritten medical records from barangay clinics with 
+the least amount of human involvement. 
+NLP for Classification, Retrieval, and Interpretation of OCR Output 
+Natural Language Processing (NLP) adds a higher level of intelligence 
+beyond text extraction by making it possible to classify, retrieve, and interpret the 
+digital data. Unstructured OCR outputs frequently contain errors, misreads, or 
+unnecessary text. Using models like Term Frequency –Inverse Document 
+Frequency (TF-IDF), which find pertinent keywords and prioritize documents, NLP 
+techniques turn this unstructured data into information that can be searched (Parth 
+Hasmukh Jain, 2023). The retrieval of domain -specific terms is improved by 
+advanced transform er-based models like BioBERT, which further capture 
+contextual meaning in medical text (Parikshit Sharma, 2023). Studies show that 
+combining natural language processing (NLP) with optical character recognition 
+(OCR) greatly improves the searchability and u sability of medical records. For 
+example, health professionals can use conversational queries like "Find all 
+children who missed their second dose of polio vaccine" to retrieve information. 
+The literature also emphasizes how OCR accuracy has a direct impac t on NLP 
+performance, as low recognition accuracy can skew entity extraction and search 
+relevance (Geeta S. Hukkeri et al., 2021). The majority of OCR -NLP frameworks 
+use fine -tuning based on localized datasets or post -processing corrections to 
+lessen this. In order to better identify Filipino handwriting styles and contextual 
+terminology, the current study intends to pre-train and refine the OCR model using 
+actual barangay health records. 
+
+--- PAGE 16 ---
+  
+   P a g e  | 15 
+Review of Related Literature and Studies 
+Cloud-Based Health Data Storage and System Integration 
+The next significant integration dimension is the creation of a digital health 
+record management system that is cloud-enabled. Cloud platforms have emerged 
+as a key component of medical informatics in recent years because of their 
+capacity to facilitate re al-time patient information access, enhance collaboration, 
+and unify disparate data sources. According to studies on cloud integration 
+architecture, multi -cloud environments foster interoperability and resilience by 
+enabling systems to function across providers while maintaining data security and 
+redundancy (Cristescu-Pompiliu et al., 2021). Cloud integration reduces the need 
+for on -site servers, lowers maintenance costs, and shields data from 
+environmental factors that could cause physical loss for health centers with limited 
+resources (Muntean et al., 2021). To protect sensitive health data and preserve 
+integrity, modern systems use encrypted connections and role -based access 
+control (RBAC) (View of Which OCR Toolset is Good and Why, 2021). The design 
+goals of the suggested health record system, which include automated record 
+classification, secure login authentication, and centralized cloud storage for 
+scanned and digital files, are directly supported by these principles. In addition to 
+modernizing recordkeeping, the system supports the Department of Health's long-
+term objective of establishing national digital health information systems by fusing 
+OCR, NLP, and cloud technologies. 
+Performance Evaluation and Usability of OCR–NLP Systems 
+The literature on OCR and NLP places equal emphasis on performance 
+evaluation and usability assessment. As quantitative measures of recognition and 
+
+--- PAGE 17 ---
+  
+   P a g e  | 16 
+Review of Related Literature and Studies 
+classification quality, commonly used metrics include accuracy, precision, recall, 
+and F1-score (Geeta S. Hukkeri et al., 2021). Proper preprocessing can increase 
+F1-scores by 5–8%, according to comparative studies of OCR frameworks. This is 
+especially true for documents with low contrast or cursive writing (Parth Hasmukh 
+Jain et al., 2023). To measure partial recognition performance on handwritten 
+datasets, some studies also use Character Error Rate (CER) and Word Error Rate 
+(WER) (Parth Hasmukh Jain et al., 2023). Although open-source alternatives offer 
+flexibility for retraining on local data, cloud OCR systems typically achieve higher 
+precision. To make sure that user queries yield contextually relevant results, NLP 
+retrieval models are evaluated using additional metrics like Mean Reciprocal Rank 
+(MRR) and semantic accuracy (Parth Hasmukh Jain et al., 2023). Human-centered 
+research emphasizes the importance of usability testing, which focuses on 
+perceived usefulness, user satisfaction, and ease of use in addition to technical 
+accuracy (Kavita Taneja et al., 2021). Higher recognition accuracy directly 
+decreases retrieval time and increases user satisfaction, according to studies 
+comparing OCR systems for document archiving. These results support the use of 
+both quantitative and qualitative assessment techniques, guaranteeing that 
+barangay health workers can effectively use technology in the real world. 
+From early text recognition engines to integrated, intelligent, and accessible 
+digital platforms, the reviewed literature collectively shows a logical development 
+in OCR, NLP, and cloud -based healthcare systems. But there are still important 
+gaps. While NL P models continue to have difficulty with bilingual and regional 
+medical terminology, the majority of OCR models are trained on Western scripts, 
+
+--- PAGE 18 ---
+  
+   P a g e  | 17 
+Review of Related Literature and Studies 
+which reduces accuracy on Southeast Asian handwriting styles. Furthermore, 
+even though low-resource environments are the ones that require digitization the 
+most, usability in these settings is rarely the subject of studies. The current study 
+aims to close these gaps by creating a hybrid OCR –NLP health record 
+management system that can handle handwritten and cursive Filipino text, is 
+optimized for low -connectivity settings, and is assessed using exacting 
+performance and user-experience metrics. Through the integration of PaddleOCR 
+for handwritten text, and classifier to automatically detect, categorize, and label 
+key health record, and use BioBert generate contextual embeddings from OCR 
+output, and integrating all backed by secure cloud infrastructure, the pr oposed 
+system seeks to close accessibility and technological gaps in community -level 
+healthcare documentation and support a long -term digital transformation of 
+Philippine health information management. 
+SYNTHESIS  
+The reviewed literature establishes a strong foundation for the integration 
+of Optical Character Recognition (OCR), Natural Language Processing (NLP), 
+image processing, and cloud computing in the digital transformation of health 
+record management. Collectively, the studies demonstrate that OCR technologies 
+have evolved from rule -based and template -matching systems into advanced 
+deep-learning-driven architectures that can recognize both printed and 
+handwritten text with improved precision (Parikshit Sharma,2 023; Sporici et al., 
+2020). The development of LSTM -based engines in TesseractOCR and CNN -
+Transformer models in PaddleOCR has expanded OCR’s capacity to handle 
+
+--- PAGE 19 ---
+  
+   P a g e  | 18 
+Review of Related Literature and Studies 
+complex scripts and degraded image quality. Similarly, image preprocessing 
+techniques—such as noise reduction, skew correction, and contrast 
+enhancement—have been shown to significantly increase OCR accuracy by 
+improving text segmentation and recognition ( Parth Hasmukh Jain et.   al,2021; 
+Saman Idrees and Hossein Hassani ,2021). 
+On the linguistic side, Natural Language Processing (NLP) introduces 
+semantic understanding and intelligent information retrieval into digitized text 
+systems. Algorithms such as TF -IDF and BM25 enhance text classification and 
+ranking, while transformer-based models like BioBERT demonstrate the potential 
+of contextual embeddings for extracting meaning from health -related data 
+(Information, 2023; Geeta S Hukkeri et. al 2021). The reviewed research confirms 
+that OCR–NLP integration streamlines  information retrieval by enabling users to 
+make natural language queries rather than relying solely on manual keyword 
+searches.  
+Moreover, studies emphasize the importance of cloud integration in 
+ensuring that digitized health data remains secure, accessible, and resilient. 
+Cloud-based architectures facilitate interoperability and scalability by connecting 
+multiple users and devices  while minimizing reliance on local infrastructure 
+(Cristescu-Pompiliu et al., 2021; Muntean et al., 2021). For small and community-
+level health centers, cloud platforms provide cost -effective and disaster -resilient 
+data storage solutions. The literature a lso highlights role -based access control 
+(RBAC) and encryption as key mechanisms for maintaining patient data 
+confidentiality and security (VKavita Taneja et. al, 2021, 2021). 
+
+--- PAGE 20 ---
+  
+   P a g e  | 19 
+Review of Related Literature and Studies 
+Finally, the reviewed studies employ diverse evaluation metrics to assess 
+OCR and NLP performance, such as accuracy, precision, recall, and F1 -score, 
+supplemented by Character Error Rate (CER) and Word Error Rate (WER) for 
+handwritten text evaluation. Research consistently shows that preprocessing and 
+model fine -tuning can raise F1 -scores by 4 –8%, while transformer -based OCR 
+frameworks outperform traditional CNNs on noisy data (Geeta S Hukkeri et. al 
+2021; 3768150.pdf). Furthermore, literature on usability underscores the human 
+factor in digital system adoption —recognition accuracy directly affects health 
+workers’ satisfaction, task efficiency, and overall trust in automated systems 
+(Kavita Taneja et. al, 2021, 2021). 
+Overall, the reviewed works converge on the notion that combining OCR, 
+NLP, image preprocessing, and cloud infrastructure produces an efficient, 
+intelligent, and scalable solution for document digitization. However, they also 
+reveal that such integrations remain underutilized in low -resource healthcare 
+settings, particularly in barangay health centers where handwritten documentation 
+and limited infrastructure pose persistent challenges. 
+GAP BRIDGE OF THE STUDY 
+Despite the substantial progress in OCR and NLP research, several gaps 
+persist that hinder the application of these technologies to community health record 
+systems—gaps that this study aims to bridge. 
+First, while OCR algorithms have achieved high accuracy on standard 
+printed datasets, their performance on handwritten and cursive text remains 
+inconsistent, especially when dealing with low-resolution scans and mixed-format 
+
+--- PAGE 21 ---
+  
+   P a g e  | 20 
+Review of Related Literature and Studies 
+documents. The literature primarily evaluates Western handwriting datasets, which 
+differ significantly from the handwriting styles and linguistic structures found in 
+Filipino health records. Thus, there is a lack of OCR models fine-tuned for localized 
+and bilingual healthcare data. The present study addresses this gap by fine-tuning 
+PaddleOCR using actual barangay immunization health records to improve 
+recognition accuracy on Filipino handwriting. 
+Second, although NLP has proven effective in classifying and retrieving 
+textual data, few studies have explored its integration with OCR for healthcare 
+record retrieval in local or low-resource environments. Existing NLP models often 
+focus on biomedical li terature and English clinical narratives, leaving a gap in 
+contextual search systems that support multilingual data and everyday user 
+queries. This study bridges that gap by integrating TF-IDF and domain-tuned NLP 
+models into the health record management s ystem to support natural language 
+search queries, allowing barangay health workers to retrieve information using 
+intuitive, conversational phrasing. 
+Third, while cloud integration is widely recognized for its advantages in data 
+sharing and storage, many existing systems assume consistent high -speed 
+connectivity and modern infrastructure. Barangay health centers often experience 
+unstable internet access , limiting their ability to rely entirely on cloud -based 
+systems. This study introduces a hybrid architecture that allows offline data access 
+and synchronization once connectivity is restored, ensuring functionality and 
+resilience in rural environments. 
+
+--- PAGE 22 ---
+  
+   P a g e  | 21 
+Review of Related Literature and Studies 
+Lastly, the literature shows that most OCR and NLP studies emphasize 
+quantitative metrics —such as accuracy and F1 -score—but neglect the human -
+centered perspective of system usability. There is limited research that evaluates 
+how OCR @accuracy and NLP retri eval quality translate into user satisfaction, 
+perceived usefulness, and efficiency in real -world healthcare workflows. The 
+present study incorporates usability testing with barangay health workers to 
+evaluate the developed system in terms of ease of use, satisfaction, and perceived 
+usefulness, complementing technical performance metrics with qualitative 
+feedback. 
+In bridging these gaps, this research contributes to a localized, OCR - and 
+NLP-driven digital health record system that integrates image preprocessing, fine-
+tuned text recognition, semantic retrieval, and hybrid cloud deployment. It not only 
+addresses the technical limitations of existing OCR and NLP frameworks but also 
+responds to the contextual challenges of the Philippine healthcare environment—
+making digitization more inclusive, adaptive, and sustainable for barangay -level 
+health service delivery. 
+
+--- PAGE 23 ---
+  
+   P a g e  | 22 
+Review of Related Literature and Studies 
+ 
+Figure 2.1: Conceptual Framework  
+The input stage consists of all the key elements required for developing the 
+OCR and NLP-driven immunization record digitization and retrieval system. At this 
+stage, the system relies on scanned handwritten and printed child vaccination 
+records obtained from barangay health centers, including entries such as vaccine 
+labels (e.g., OPV, PCV), handwritten dates, patient measurements, and medical 
+notes. These scanned records serve as the primary data source for training, fine -
+tuning, and evaluating the system’s  ability to accurately recognize, extract, and 
+organize health information.  
+  The system incorporates Optical Character Recognition (OCR) 
+technologies specifically PaddleOCR for both printed and handwritten entries to 
+automate the reading of mixed -format immunization documents. To enhance 
+recognition accuracy, image preprocessing me thods such as denoising, 
+
+
+--- PAGE 24 ---
+  
+   P a g e  | 23 
+Review of Related Literature and Studies 
+binarization, contrast adjustment, and skew correction are applied to improve the 
+clarity and legibility of scanned forms. Additionally, Natural Language Processing 
+(NLP) techniques are integrated into the system, including Term Frequency –
+Inverse Document Frequency (TF -IDF) for text vectorization, Support Vector 
+Machine (SVM) for classification of extracted vaccination components, and 
+BioBERT embeddings for contextual, semantic retrieval of vaccination information. 
+These technologies operate within a cloud -supported environment consisting of 
+Firebase Realtime Database and Cloud Storage, which provide secure, 
+centralized data management and real -time synchronization. Development tools 
+such as Python, Next.js, and Firebase SDK together with the researchers’ 
+technical expertise to complete the essential inputs needed to design, build, and 
+deploy the system. 
+The process stage involves transforming all gathered inputs into a 
+functional, intelligent health record management system. The workflow begins with 
+data preprocessing, where scanned immunization forms undergo enhancement, 
+segmentation, and normalization t o allow more accurate OCR extraction. OCR 
+follows immediately after, with PaddleOCR recognizing both printed text and fine-
+tuned models processing handwritten entries such as vaccine labels, patient vitals, 
+and dates. Extracted OCR outputs are then passed through text post-processing, 
+where errors are corrected, inconsistent formats are standardized, and entries are 
+cleaned for downstream NLP analysis.  
+ The next phase integrates the NLP modules, where TF -IDF is used to 
+convert OCR-generated text into numerical feature representations, and SVM is 
+
+--- PAGE 25 ---
+  
+   P a g e  | 24 
+Review of Related Literature and Studies 
+applied to classify key vaccination information, including vaccine type, dosage, 
+date administered, and relevant notes. BioBERT embeddings support semantic 
+retrieval, enabling the system to understand and respond to natural -language 
+queries such as “show m easles vaccination” or “vaccines given in September.” 
+These components are then built into a secure web -based platform connected to 
+Firebase, allowing health workers to upload records, authenticate securely, 
+retrieve digitized entries, and synchronize data in real time. The system undergoes 
+iterative testing and evaluation, where OCR and NLP modules are assessed using 
+metrics such as accuracy, precision, recall, and F1 -score to ensure consistent, 
+reliable performance across various handwriting styles and record formats. 
+The output stage presents the final product of the study—an OCR and NLP-
+driven Immunization Record Digitization and Retrieval System customized for 
+barangay health centers. The resulting web -based platform automates the 
+conversion of handwritten and printe d vaccination records into structured, 
+searchable digital data stored securely in the cloud. Through an intuitive, user -
+friendly interface, authorized health workers can easily view, organize, and retrieve 
+immunization information with minimal manual effor t. With the integration of TF -
+IDF/SVM classification and BioBERT semantic retrieval, the system enables 
+faster, more accurate access to patient vaccination history, significantly reducing 
+encoding errors and streamlining record management processes. By cen tralizing 
+and digitizing community -level immunization data, the system enhances data 
+accuracy, accessibility, and reliability, providing barangay health centers with a 
+practical and efficient digital solution that bridges the gap between traditional 
+
+--- PAGE 26 ---
+  
+   P a g e  | 25 
+Review of Related Literature and Studies 
+paper-based documentation and modern, intelligent health information 
+management. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 27 ---
+  
+   P a g e  | 26 
+Methodology 
+ 
+CHAPTER  3 
+METHODOLOGY 
+ 
+This chapter presents the research approach used to develop the OCR- and 
+NLP-powered Digital Vaccination Records Management System for barangay 
+health centers. The study employs the Rapid Application Development (RAD) 
+methodology, which emphasizes fast dev elopment cycles, prototyping, and 
+continuous user involvement. RAD is suitable for this project because it supports 
+iterative refinement of system features through frequent feedback from health 
+workers, enabling quick adjustments to evolving requirements. The development 
+process is structured around key RAD phases, including requirements planning, 
+user design through prototyping, rapid construction, and system implementation. 
+To build the machine learning components of the system, the Machine 
+Learning Development Life Cycle (MLDLC) framework is incorporated. MLDLC 
+guides the processes of data collection and preparation, model training, 
+evaluation, and integration into the syste m. This framework supports the 
+development of the OCR pipeline using PaddleOCR for text recognition and the 
+NLP modules utilizing TF -IDF, SVM classification, and BioBERT embeddings for 
+record retrieval. Together, RAD and MLDLC ensure a streamlined, iterati ve, and 
+data-driven development process that aligns with both system functionality and 
+machine learning requirements. 
+Rapid Application Development Framework for System Development 
+
+--- PAGE 28 ---
+  
+   P a g e  | 27 
+Methodology 
+The Rapid Application Development (RAD) framework was utilized in 
+developing the Digital Vaccination Records Management System to ensure fast -
+paced, iterative, and user -centered system creation. RAD emphasizes rapid 
+prototyping, continuous refinement, and active stakeholder participation, enabling 
+the system to quickly adapt to the operational needs of barangay health centers. 
+Through its focus on flexibility and iterative design, RAD supports the efficient 
+validation of OCR outputs, improvement of NLP perf ormance, and enhancement 
+of overall system usability. 
+ 
+   Figure 3.1. Rapid Application Development Framework 
+Figure 3.1 above illustrates the workflow of the Rapid Application 
+Development (RAD) framework, which guided the iterative prototyping, user 
+collaboration, and fast-paced development processes undertaken in this study. 
+Define Project Requirements 
+
+
+--- PAGE 29 ---
+  
+   P a g e  | 28 
+Methodology 
+The requirements definition phase established the foundational 
+specifications needed to develop the Digital Vaccination Records Management 
+System. This began with identifying the data requirements necessary for the 
+system to function effectively, which inc luded patient demographic information, 
+vaccination details, scanned vaccination forms for OCR processing, user account 
+credentials, and system activity logs. These data types guided the structure of the 
+database and the design of system input fields. User requirements were identified 
+through consultations with barangay health workers and system administrators, 
+which helped define the essential functions needed in the Digital Vaccination 
+Records Management System. Stakeholders emphasized the importance of 
+maintaining data integrity and implementing strong security measures to protect 
+user information and vaccination records. Health workers expressed the need for 
+an automated process that could scan and convert uploaded vaccination forms 
+into digital text to eliminate manual encoding of handwritten or printed data. They 
+also required features that allowed records to be organized by year to support 
+systematic data management and facilitate easier reference during reporting. 
+Additionally, users highlighted the ne cessity of an efficient search function that 
+enabled quick retrieval of specific digitized vaccination records. These 
+requirements guided the formulation of system features that aligned with the 
+practical workflows and operational demands of barangay healt h centers. Users 
+also emphasized the importance of an intuitive, responsive interface that aligned 
+with their workflow and supported multiple user roles. 
+
+--- PAGE 30 ---
+  
+   P a g e  | 29 
+Methodology 
+To support rapid prototyping and iterative development under the RAD 
+framework, the technical requirements of the system were defined based on tools 
+and technologies that enabled fast deployment and seamless integration. The 
+frontend was developed using Ne xt.js, which provided server -side rendering and 
+component-based architecture suitable for scalable web applications. Styling and 
+interface responsiveness were implemented using Tailwind CSS together with 
+JavaScript/TypeScript, allowing rapid design adjustm ents aligned with user 
+feedback. For the backend, the system utilized Firebase, which offered a fully 
+managed ecosystem compatible with Next.js and capable of handling essential 
+backend processes without the need for a traditional server. Firebase 
+Authentication managed secure user login and account control, while Firebase 
+Firestore served as the primary NoSQL database for storing patient records, 
+vaccination details, and system logs. Uploaded scanned forms and related files 
+were stored through Firebase Sto rage, ensuring secure, cloud -based file 
+management. 
+Google Cloud Run were also used to handle server-side logic, such as API 
+endpoints for interfacing with the machine learning components developed under 
+the MLDLC. Deployment was facilitated through Firebase Hosting, allowing the 
+system to be delivered efficiently as a prod uction-ready web application. Security 
+requirements included password hashing handled by Firebase Authentication and 
+HTTPS enforcement through Firebase Hosting to maintain data integrity and 
+protect sensitive vaccination records. Together, these technologi es provided an 
+optimized and scalable technical foundation for the system’s development. 
+
+--- PAGE 31 ---
+  
+   P a g e  | 30 
+Methodology 
+User Design 
+The user design phase focused on creating prototypes that represented the 
+key functionalities of the Digital Vaccination Records Management System. In this 
+study, an initial layout was developed using Figma, which included the main pages 
+of the system: the Sign In/Sign Up Page, Dashboard, File Digitalization Page, and 
+File Retrieval Page. These pages provided a visual representation of system 
+navigation, user workflows, and feature placement, serving as a foundation for 
+stakeholder review and feedback. 
+The prototypes allowed barangay health workers and system administrators 
+to interact with the interface, assess the usability of each page, and suggest 
+improvements before full implementation. Iterative refinement of these pages 
+ensured that the system bec ame intuitive, responsive, and aligned with the 
+operational needs of barangay health centers. 
+Initial Layout and Design 
+The Digital Health Record Management System's UI was created with 
+accessibility, uniformity, and clarity in mind. Every page, including login, 
+dashboard, upload, and record retrieval, has a consistent design that makes it 
+simple for users to switch between  features. All pages have the same left -side 
+navigation panel, which offers easy access to important parts including the 
+Dashboard, Upload File, and Search Record. Central panels are devoted to user 
+tasks, such as retrieving digitalized data or submitting health forms for OCR 
+processing. Barangay health workers can effectively complete record 
+management tasks with no training because of visual cues, buttons, and named 
+
+--- PAGE 32 ---
+  
+   P a g e  | 31 
+Methodology 
+sections that lead users through each step and reduce cognitive burden. This 
+cohesive layout promotes usability, workflow efficiency, and a smooth overall user 
+experience. 
+1. The Sign In/ Sign Up Page 
+ 
+Figure 3.2:  User interface for Signing in to the system 
+Figure 3.2 illustrates the design of the system's login page. The interface 
+comprises two main components: one for new users to create an account and 
+another for returning users to log in. A greeting message on the left side prompts 
+new users to register by clicking the “Sign Up” button, urging them to engage and 
+contribute. Upon clicking the “Sign Up” button, the interface seamlessly transitions 
+to the registration page, allowing users to input their personal information to 
+
+
+--- PAGE 33 ---
+  
+   P a g e  | 32 
+Methodology 
+establish an account. On the right side, registered users may securely log in by 
+entering their email address and password in the designated areas. The “Sign In” 
+button commences the authentication procedure, whereas the “Forgot Password” 
+link aids users i n account recovery. This design enhances clarity and facilitates 
+navigation, enabling users to effortlessly transition between account creation and 
+login inside a contemporary, aesthetically balanced interface. 
+2. Dashboard 
+ 
+                              Figure 3.3: User interface for the Dashboard  
+Figure 3.3 shows how the system's dashboard page is set up. This interface 
+is the main place to manage and look at records in the system. When users check 
+in, they see a welcome message with their username that is unique to them. An 
+
+
+--- PAGE 34 ---
+  
+   P a g e  | 33 
+Methodology 
+easy sidebar navigation that includes the Dashboard, Digitalize a File, and Search 
+for a File. A placeholder graph in the middle shows significant trends and 
+summaries, while the top tabs let users move between All Records and Yearly 
+Records to quickly fil ter the data. The Sign Out button at the bottom makes sure 
+that the session ends safely. The structured and visually balanced dashboard 
+arrangement makes it easy to access, understand, and use the design as a whole. 
+3. File Digitalization Page 
+ 
+                                 Figure 3.4: User interface for Digitalizing a File 
+Figure 3.4 shows how the system's file is digitalized. The users can upload 
+an image or scanned vaccination record and view the extracted text generated by 
+the system. The interface centers on a large Extracted Text display panel, which 
+
+
+--- PAGE 35 ---
+  
+   P a g e  | 34 
+Methodology 
+remains empty until an image is processed. Users can begin the digitization 
+workflow by clicking the Import Image button at the lower right portion of the 
+screen. Once an image is selected, the system runs its Optical Character 
+Recognition (OCR) module to read and convert the handwritten or printed details 
+from the uploaded vaccination record. The extracted text is automatically shown in 
+the main text viewer, giving users the ability to scroll through the content. If 
+adjustments are needed, the Edit Extract ed Text button allows users to revise or 
+correct any OCR inaccuracies. After confirming the extracted information, users 
+can click the Save button located at the bottom center to store the digitized record 
+securely in the system’s database. 
+4. File Retrieval Page 
+ 
+
+
+--- PAGE 36 ---
+  
+   P a g e  | 35 
+Methodology 
+Figure 3.5: User interface for record retrieval 
+Figure 3.5 depicts the Search Records interface for the web -based 
+immunization record management system. This website allows users to quickly 
+find digitized patient vaccination records using the system's built -in search 
+capabilities using identity-filtering rules and BioBERT. At the top is a conspicuous 
+search box where users can enter a patient's name, record ID, immunization type, 
+or other identifying information. Matching results are displayed promptly in the 
+Retrieved Record table, which is positioned directly beneath the search field. 
+Each result that fits the user's query is displayed as a list entry, including 
+the patient's name, unique record ID, and vaccination date. These details are given 
+in a neat and organized layout to facilitate quick skimming and browsing. A scroll 
+bar on the right side of the results panel allows visitors to view numerous matched 
+entries. 
+ After selecting a record, users can choose between two options at the 
+bottom of the interface: View File, which opens the entire digitized vaccination 
+record, and Save as P DF, which exports the selected record as a downloadable 
+PDF file. This design provides easy access to recorded immunization records while 
+preserving clarity and usability throughout the search process. 
+Rapid Construction 
+The rapid construction phase involved the active development, integration, 
+and testing of the system through iterative cycles. The frontend was developed 
+using Next.js, Tailwind CSS, and JavaScript/TypeScript, translating the initial 
+Figma designs into int eractive web pages, including the Sign In/Sign Up Page, 
+
+--- PAGE 37 ---
+  
+   P a g e  | 36 
+Methodology 
+Dashboard, File Digitalization Page, and File Retrieval Page. For the backend, 
+FastAPI hosted on Google Cloud Run provided a scalable environment for 
+handling server -side operations and machine learning inference that was 
+developed under the Model Developm ent phase of the MLDLC framework. 
+Firebase continued to manage authentication, and database storage, and 
+uploaded scanned forms, with Firestore storing patient records and vaccination 
+details and Firebase Storage handling file uploads. 
+The integration of machine learning components enabled automated 
+processing and retrieval of vaccination records. PaddleOCR scanned the 
+uploaded forms and extracted text, converting handwritten or printed data into 
+machine-readable format. The extracted text was then classified using TF-IDF and 
+SVM models and securely stored in Firebase Firestore for organized record 
+management. When users searched for specific records, BioBERT embeddings 
+performed semantic retrieval, ensuring that the correct record was fo und. Identity 
+filtering in the backend supported BioBERT retrieval by matching queries with the 
+corresponding individual’s records. This workflow allowed the system to efficiently 
+digitize, classify, store, and retrieve vaccination records as needed. 
+Throughout development, Git and GitHub were used for version control, 
+enabling the team to track code changes, collaborate effectively, and manage 
+iterative improvements. Each iteration incorporated stakeholder feedback, 
+ensuring the system was stable, functional, and aligned with the operational needs 
+of barangay health centers. 
+Implementation 
+
+--- PAGE 38 ---
+  
+   P a g e  | 37 
+Methodology 
+Finally, in the implementation phase, the developed system was deployed 
+to the production environment and thoroughly tested. The frontend was hosted on 
+Vercel, while the backend, including all machine learning components, ran on 
+Google Cloud Run. Firebase managed authentication, database storage, and file 
+handling. The development team, consultants, and several barangay health 
+workers conducted extensive testing to ensure that all system components 
+functioned effectively under real-world conditions. At this stage, PaddleOCR, TF-
+IDF, SVM, and BioBERT operated together seamlessly, reliably scanning, 
+classifying, storing, and retrieving digitized vaccination records. Identity filtering in 
+the backend ensured that only records matching the requesting user were 
+retrieved. Feedback collected during this phase was documented and used to 
+make further refinements prior to the official launch. 
+The RAD framework guided the overall development process, ensuring 
+rapid iteration, stakeholder involvement, and continuous improvement. By 
+breaking the project into defined phases —requirements definition, user design, 
+rapid construction, and implementatio n—the team was able to address issues 
+promptly, incorporate user feedback, and gradually enhance system functionality. 
+Each iteration improved usability, reliability, and performance, resulting in a stable, 
+production-ready system that met the operational needs of barangay health 
+centers. 
+Machine Learning Development Life Cycle 
+The Machine Learning Development Life Cycle served as the foundation for 
+the study's applied developmental research design. The MLDLC recognized that 
+
+--- PAGE 39 ---
+  
+   P a g e  | 38 
+Methodology 
+interface development was only one aspect of an intelligent system's efficacy; 
+other factors included the methodical processing of data, the selection and training 
+of suitable models, and ongoing performance evaluation. 
+The MLDLC was divided into several main stages in this study: (1) problem 
+definition and requirements analysis; (2) data collection and preprocessing; (3) 
+feature extraction and representation; (4) model development and training for OCR 
+and NLP; (5) model evaluation; (6) model integration. These stages were arranged 
+logically, but they also permitted iteration when evaluation findings suggested that 
+data preparation or model tuning needed to be reviewed. The study made sure 
+that the machine learning components of the system were developed th rough an 
+organized, evidence-based process while still being responsive to the operational 
+needs of barangay health workers by basing the research on the MLDLC.
+ 
+
+
+--- PAGE 40 ---
+  
+   P a g e  | 39 
+Methodology 
+Figure 3.6. Research Design and Machine Learning 
+Development Life Cycle Framework 
+Phase 1: Problem Definition and Requirements Analysis 
+The methodology began with the identification of the operational challenges 
+faced by barangay health centers. At the time of the study, health records were 
+handwritten or printed on physical forms and stored manually. This practice 
+resulted in delayed retr ieval, susceptibility to loss or damage, and potential 
+encoding inaccuracies. 
+Based on consultations with barangay health workers and research advisers, the 
+study defined the central problem as the absence of a system capable of 
+automatically digitizing and organizing these records. The primary requirement, 
+therefore, was a mechanis m that could extract text from mixed handwritten and 
+printed forms, interpret the extracted information, store it securely, and retrieve it 
+efficiently when needed. 
+Functional and non -functional requirements were documented during this 
+phase. The system was required to support mixed -format records; extract key 
+patient and vaccination information; classify and store data logically; provide 
+secure, role-based access; and deliver a user -friendly interface for non -technical 
+health personnel. These requirements guided the succeeding phases of data 
+preparation, model training, and system development. 
+Phase 2: Data Collection and Preprocessing 
+The Data Collection and Preprocessing phase established the foundation 
+for the system’s machine learning components. A total of 240 vaccination and 
+
+--- PAGE 41 ---
+  
+   P a g e  | 40 
+Methodology 
+health record forms were obtained from the Barangay Mariawa Health Center in 
+Legazpi City. Each form was scanned using an Epson L3210 scanner to ensure 
+consistency in image quality, resolution, and orientation. 
+Preprocessing techniques were applied to enhance text legibility and 
+reduce recognition errors. These included grayscale conversion to simplify the 
+color channels, adaptive thresholding to improve contrast between text and 
+background, denoising filters suc h as Gaussian or median filtering to remove 
+image noise, deskewing to correct tilted or rotated scans, and 
+resizing/normalization to maintain uniform dimensions across the dataset. These 
+steps were particularly important for handling faded ink, inconsisten t handwriting, 
+and mixed printed and handwritten text. 
+For supervised learning, the scanned images were manually annotated, 
+creating ground -truth transcriptions for each form. Each image segment was 
+paired with its verified textual content, enabling the PaddleOCR model to learn the 
+domain-specific characterist ics of handwritten and printed vaccination records. 
+These annotated pairs provided the labeled dataset necessary for OCR fine -
+tuning, subsequent text classification, and semantic retrieval tasks. 
+Cross-Validation Dataset Partitioning 
+To ensure robust and unbiased model evaluation, the 240 annotated forms 
+were systematically divided into five equal sets (Set A, Set B, Set C, Set D, and 
+Set E), with each set containing 48 records. The division was performed using 
+stratified sampling to m aintain representative distribution across all sets.   This 
+stratification ensured that each set included a balanced mix of different handwriting 
+
+--- PAGE 42 ---
+  
+   P a g e  | 41 
+Methodology 
+styles and legibility levels, various form conditions (such as well-preserved versus 
+faded or worn forms), diverse content types including multiple vaccine types and 
+patient demographics, and multiple date ranges to capture temporal variation in 
+recording practices. This balanced partitioning was specifically designed to 
+support 5-fold cross-validation during the model training and evaluation phases. 
+By ensuring that each fold was representative of the overall dataset, the study 
+aimed to produce reliable performance metrics that accurately reflect the system’s 
+capability to generalize across diverse real-world barangay health records. 
+Phase 3: Extraction and Representation of Features  
+During this phase, the preprocessed and annotated data were transformed 
+into machine -readable representations to enable automated recognition, 
+classification, and semantic understanding. The feature extraction process 
+established three distinct representation layers, each serving a specific function in 
+the pipeline. 
+The first layer involved extracting visual and textual features from the 
+scanned forms. The preprocessed images from Phase 2 —which had undergone 
+grayscale conversion, adaptive thresholding, denoising, deskewing, and 
+normalization—were prepared for Optical Character Recognition (OCR) 
+processing. At this stage, the focus was on identifying the visual characteristics 
+that would enable text recognition, including stroke curvature, letter contours, 
+spacing patterns, and the layout structure of printed and handwr itten text. The 
+annotated ground -truth transcriptions paired with their corresponding image 
+segments formed the basis for extracting these visual -textual features, capturing 
+
+--- PAGE 43 ---
+  
+   P a g e  | 42 
+Methodology 
+domain-specific characteristics such as shorthand date formats, stylized initials, 
+and mixed Filipino-English labels commonly found in barangay health records. 
+The second layer focused on statistical text representation for classification 
+purposes. Once textual data could be extracted from forms, a method for 
+converting this text into numerical vectors was needed. Term Frequency –Inverse 
+Document Frequency (TF -IDF) was selected as the vectorization technique to 
+transform the OCR-extracted text into weighted numerical representations. TF-IDF 
+assigns importance scores to words based on their frequency within individual 
+documents relative to their frequency across the  entire dataset. This statistical 
+approach highlights distinctive terms while reducing the weight of common words, 
+creating feature vectors that emphasize the unique characteristics of different 
+record types. These vectors were designed to facilitate the classification of records 
+by content type (e.g., Patient Information, Vaccine Details) and chronological 
+grouping by year. 
+The third layer addressed semantic representation for context -aware 
+retrieval. To enable the system to understand meaning rather than merely 
+matching exact words, BioBERT embeddings were prepared as the semantic 
+representation layer. BioBERT, a language mo del pre -trained on biomedical 
+literature, was selected for its ability to capture contextual meaning within medical 
+and health -related text. The process involved feeding OCR -extracted text into 
+BioBERT to generate dense contextualized embeddings —high-dimensional 
+numerical vectors that encode semantic relationships between words and phrases. 
+These embeddings preserve contextual information, allowing the system to 
+
+--- PAGE 44 ---
+  
+   P a g e  | 43 
+Methodology 
+recognize semantic equivalences such as "booster shot" and "third dose," or 
+"infant shot" and "DTaP," even when phrased differently. Additionally, structured 
+metadata features—including patient identifiers, record dates, and demographic 
+information—were ex tracted and prepared to facilitate identity -based filtering 
+during retrieval operations. 
+By the end of this phase, the system had produced a layered representation 
+of the data: visual features from preprocessed images ready for OCR processing, 
+statistically weighted TF -IDF vectors for text classification, semantically rich 
+BioBERT embeddings for contextual retrieval, and structured metadata for precise 
+patient-specific filtering. These multi -level feature representations formed the 
+foundation for the subsequent model training and development phase, where 
+machine learning models would learn to u tilize these features for accurate 
+digitization, organization, and retrieval of health records. 
+Phase 4: Model Development and Training 
+The 240 records, previously divided into five equal sets (A, B, C, D, E) of 48 
+records each, were used in a systematic cross -validation approach. In each fold, 
+four sets comprising 192 records served as the training partition, while the 
+remaining set of 48 records served as the test partition. This process was repeated 
+five times with different combinations: 
+• Fold 1: Training sets (A+B+C+D, 192 records), Test set (E, 48 records) 
+• Fold 2: Training sets (A+B+C+E, 192 records), Test set (D, 48 records) 
+• Fold 3: Training sets (A+B+D+E, 192 records), Test set (C, 48 records) 
+• Fold 4: Training sets (A+C+D+E, 192 records), Test set (B, 48 records) 
+
+--- PAGE 45 ---
+  
+   P a g e  | 44 
+Methodology 
+• Fold 5: Training sets (B+C+D+E, 192 records), Test set (A, 48 records) 
+This rotation ensured that every record in the dataset was used for testing 
+exactly once while being used for training in the other four folds. All three model 
+components (OCR, classification, and semantic retrieval) were trained and 
+evaluated using this identical cross-validation scheme to maintain consistency and 
+enable fair performance comparison. 
+OCR Model Fine-Tuning 
+The Optical Character Recognition component was implemented using 
+PaddleOCR, which required fine -tuning to adapt to the specific characteristics of 
+barangay health records. For each fold of the cross -validation process, the 
+recognition head of PaddleOCR was fine-tuned from its pre-trained state using 
+the training partition's annotated image -text pairs. While the pre -trained model 
+could detect text regions effectively, the recognition of individual characters was 
+not fully reliable for this dataset; for example, charact ers such as “B” could be 
+misinterpreted as “8,” and handwritten abbreviations or mixed Filipino -English 
+terminology often produced errors in raw outputs. Fine-tuning the recognition head 
+allowed the model to learn the visual -textual mappings specific to th e dataset, 
+improving character -level accuracy while retaining the robust text -detection 
+capabilities of the backbone. 
+The training process involved feeding preprocessed image segments and 
+their corresponding ground-truth transcriptions to the model, allowing it to learn the 
+unique handwriting styles, mixed-language terms, and visual irregularities present 
+in the vaccination records. Training hyperparameters were configured as follows: 
+
+--- PAGE 46 ---
+  
+   P a g e  | 45 
+Methodology 
+a learning rate of 0.001 with adaptive decay, batch size of 16 images, and training 
+for 50 epochs with early stopping based on validation loss. Within each fold, 20% 
+of the training partition (approximately 38 records) was further set aside as a 
+validation set to monitor training progress and prevent overfitting, while the 
+remaining 80% (approximately 154 records) was used for model parameter 
+updates. 
+The model underwent iterative training cycles within each fold, with 
+performance monitored on the validation subset. After training completion for each 
+fold, the fine -tuned model was evaluated on that fold's held -out test set (48 
+records) to assess its text extraction accuracy. This process was repeated across 
+all five folds, with each fold's model trained independently from scratch, ensuring 
+unbiased performance assessment. The OCR outputs from each fold's test set, 
+now with improved character -level recogn ition, were then used as input for the 
+subsequent classification and retrieval components. 
+Classification Model Training 
+Following OCR extraction, a classification component was developed to 
+organize the digitized text into structured categories. For each cross -validation 
+fold, TF-IDF feature vectors were generated from the OCR -extracted text in the 
+training partition (192 r ecords). These vectors served as input to train a Support 
+Vector Machine (SVM) classifier specifically for that fold predefined sections such 
+as Patient Information, Vaccine Details, and other relevant record types, and 
+grouping records chronologically by year to enable systematic temporal 
+organization. The model was configured with a Radial Basis Function (RBF) 
+
+--- PAGE 47 ---
+  
+   P a g e  | 46 
+Methodology 
+kernel, and hyperparameters including the regularization parameter (C) and kernel 
+coefficient (gamma) were optimized through nested cross -validation within the 
+training partition to prevent information leakage from the test set. 
+During training, the SVM learned to identify patterns in the TF -IDF vectors 
+that distinguished different record categories and time periods. The training 
+process involved feeding labeled TF -IDF vectors —where each vector was 
+associated with its known catego ry and year —allowing the SVM to establish 
+decision boundaries that effectively separate different record types. After training 
+on each fold's training partition, the model was applied to that fold's test set (48 
+records) to evaluate classification performance. This process was repeated across 
+all five folds, with performance metrics aggregated to provide overall classification 
+accuracy measures. 
+Semantic Retrieval Model Configuration 
+To enable context -aware retrieval beyond exact keyword matching, 
+BioBERT was integrated as the semantic search component. Unlike the OCR and 
+SVM models that required training on the specific dataset, BioBERT came pre -
+trained on extensive biomedical literat ure, providing inherent understanding of 
+medical terminology and health-related contexts. Therefore, BioBERT itself did not 
+undergo fine-tuning but was configured and evaluated using the same 5-fold cross-
+validation structure for consistency. 
+For each fold, BioBERT generated dense contextualized embeddings for all 
+records in the training partition (192 records), which were stored as the searchable 
+database for that fold. The retrieval mechanism was developed using cosine 
+
+--- PAGE 48 ---
+  
+   P a g e  | 47 
+Methodology 
+similarity as the distance metric to compare query embeddings against stored 
+record embeddings. To evaluate retrieval performance, test queries were 
+constructed from the test partition (48 records) of each fold. Each test query 
+simulated real -world user se arches with paraphrased or synonym -based 
+phrasings (e.g., using "booster" to search for records containing "3rd dose").  The 
+system was configured to utilize structured metadata filtering in conjunction with 
+BioBERT embeddings —database-level filtering by p atient identifiers, names, or 
+dates of birth ensures that semantic search operates only within the correct 
+patient's records, maintaining precise patient-specific retrieval. 
+By the end of this phase, the three components had been trained and 
+validated through the complete 5 -fold cross -validation process. Each fold 
+produced independent performance measurements for: the fine-tuned PaddleOCR 
+model for accurate text extraction fro m mixed handwritten and printed forms, the 
+TF-IDF + SVM classifier for systematic categorization and temporal organization, 
+and the BioBERT-based semantic retrieval system for context -aware information 
+access. 
+Training logs, performance metrics, and model checkpoints were 
+documented for each fold to track improvements and support analysis of 
+performance variability across different data subsets. These trained models 
+collectively enabled the transformation of uns tructured health record images into 
+searchable, organized digital records, preparing the system for comprehensive 
+comparative evaluation in Phase 5. The cross -validation approach ensured that 
+the reported performance in the next phase would represent robust, generalizable 
+
+--- PAGE 49 ---
+  
+   P a g e  | 48 
+Methodology 
+estimates of system capability rather than results from a single  potentially biased 
+train-test split.
+ 
+      Figure 3.7: Model Architecture and Implementation 
+Phase 5: Comparative Analysis and Model Evaluation 
+This phase assessed the performance of all system components using 
+quantitative metrics derived from the 5-fold cross-validation process completed in 
+Phase 4. By aggregating results across all five folds, the evaluation provided 
+robust estimates of model p erformance with measures of variability and 
+consistency. 
+OCR Model Evaluation 
+
+
+--- PAGE 50 ---
+  
+   P a g e  | 49 
+Methodology 
+The OCR model evaluation determined how well the fine-tuned PaddleOCR 
+framework could identify printed and handwritten text from the barangay health 
+forms. Performance was measured across all five folds, with each fold's test set 
+(48 records) evaluated independently using the model trained on that fold's training 
+partition. The evaluation framework followed standards established by Hukkeri et 
+al. (2022) in the International Journal of Advanced Computer Science and 
+Applications (IJACSA). 
+The following metrics were calculated for each fold and then aggregated: 
+1. Character Recognition Rate (CRR)  — measures the proportion of 
+correctly recognized characters relative to the total number of ground truth 
+characters: 
+ 
+2. Word Recognition Rate (WRR) — evaluates the accuracy of recognizing 
+entire words:  
+ 
+3. Line Recognition Rate (LRR)  — determines the accuracy of recognizing 
+full lines of text: 
+ 
+4. Character Error Rate (CER)  — quantifies the number of character -level 
+errors including substitutions (S), insertions (I), and deletions (D): 
+
+
+--- PAGE 51 ---
+  
+   P a g e  | 50 
+Methodology 
+ 
+  where N is the total number of ground truth characters. 
+5. Word Error Rate (WER) — measures similar errors but at the word level, 
+using  
+ 
+where Nw represents the total number of ground truth words. 
+6. Precision (P) — represents the fraction of correctly recognized elements 
+among all recognized elements:  
+ 
+where TP is true positives and FP is false positives. 
+7. Recall (R)  — measures the proportion of correctly recognized elements 
+relative to the total actual elements:  
+ 
+where FN  is false negatives. 
+
+
+--- PAGE 52 ---
+  
+   P a g e  | 51 
+Methodology 
+8. F1-Score (F1)  — provides a balanced measure between Precision and 
+Recall: 
+ 
+These metrics collectively measure the OCR’s recognition ability at multiple levels 
+(character, word, and line).  
+BioBERT Semantic Retrieval Evaluation 
+The BioBERT -based retrieval system was evaluated on its capacity to 
+return semantically relevant records in response to user queries, even when query 
+phrasing differed from the original text. For each fold, a set of test queries was 
+constructed from the te st partition (48 records), with queries intentionally 
+paraphrased to use synonyms or alternative medical terminology (e.g., "booster" 
+instead of "3rd dose", "infant shot" instead of "DTaP"). 
+Both stored records and user queries were transformed into dense 
+contextualized vectors using BioBERT embeddings. Cosine similarity was 
+calculated between query and record embeddings: 
+ 
+The system returns the top-scoring matches, and performance is evaluated 
+with Top -1 Accuracy, Top -3 Accuracy, and Mean Reciprocal Rank (MRR) —
+metrics that are commonly used in modern neural retrieval systems.  
+These metrics were calculated for each fold's test queries and then 
+averaged across all five folds. The mean and standard deviation of retrieval metrics 
+
+
+--- PAGE 53 ---
+  
+   P a g e  | 52 
+Methodology 
+provided insight into both the typical performance and the consistency of the 
+semantic retrieval system across different record subsets. 
+Phase 6: Model Integration and Deployment 
+After completing the training and evaluation of all components through 5 -
+fold cross -validation—including the TF -IDF + SVM classification model, the 
+PaddleOCR model for OCR processing, and the BioBERT embedding -based 
+retrieval module—the final phase centered on integrating these machine learning 
+components into a unified cloud-based web application. 
+For deployment, the best-performing model configurations identified during 
+cross-validation were selected. Rather than deploying models from a single fold, 
+the final production models were retrained using the complete 240-record dataset 
+to maximize learnin g from all available data, since cross -validation had already 
+provided robust performance estimates. This final training incorporated the optimal 
+hyperparameters and configurations validated through the cross -validation 
+process. 
+This integration ensured that each subsystem functions cohesively within a 
+single end -to-end digitization and retrieval workflow. All models were deployed 
+within the cloud environment to support real -time OCR processing, text 
+vectorization, and semantic re trieval. By consolidating the pipeline into the web 
+application, the system enables health workers to upload records, access digitized 
+data, and retrieve relevant information seamlessly and remotely through an 
+accessible browser-based interface. 
+Hardware and Software Specifications 
+
+--- PAGE 54 ---
+  
+   P a g e  | 53 
+Methodology 
+To ensure the efficient performance of the Optical Character Recognition 
+(OCR) and Natural Language Processing (NLP) modules, as well as the stability 
+of the web-based health record management system, the researcher will utilize a 
+hardware and software setup designed for high computational efficiency, security, 
+and scalability. 
+Hardware Specification 
+ The hardware requirements for the Digital Vaccination Records 
+Management System are categorized into two primary environments: the 
+development machine used during system and model creation, and the production 
+server used for deployment and real -world operation. The development machine 
+required a moderately high -performance configuration to support system 
+development, testing, and the fine -tuning of machine learning components such 
+as PaddleOCR. The recommended hardware specification should at least have a 
+4-core processor (e.g., AMD Ryzen 7 5700U), 16 GB RAM, and 512 GB SSD to 
+support system development and local testing. GPU acceleration for OCR fine -
+tuning was recommended through an NVIDIA CUDA -enabled GPU with 6 –8 GB 
+VRAM, or alternatively through cloud G PU services such as Google Colab. The 
+production server, deployed on Google Cloud Run, required at least 4 vCPUs, 8 –
+16 GB RAM, and 50 GB SSD to handle backend services, API processing, and 
+model inference. These specifications ensured stable performance fo r OCR 
+processing, text classification, and record retrieval during actual system use. 
+Table 1. Hardware Specifications 
+
+--- PAGE 55 ---
+  
+   P a g e  | 54 
+Methodology 
+Component Recommended  Specification 
+Development 
+Machine 
+Processor: AMD Ryzen 7 5700U with Radeon Graphics (1.80 
+GHz) or at least 4+ core processor.  
+RAM: 16.0 GB 
+Storage: 512 SSD 
+Graphics Processing Unit (GPU): NVIDIA GPU with CUDA 
+support(At least 6–8 GB VRAM) or via Google Colab or cloud 
+GPU service 
+System Type: 64-bit Operating System, x64-based processor 
+Production 
+Server 
+ 4 vCPUs(Virtual CPUs), 8-16 GB RAM, 50 GB SSD Storage, 
+(Cloud Instance on Google Cloud Run) 
+Software Specification  
+Windows 11 Home Single Language (Version 24H2) served as the primary 
+operating system for system development, supporting frontend and backend 
+development, database integration, and machine learning model implementation. 
+The frontend was developed using Nex t.js and Tailwind CSS, while PaddleOCR 
+handled OCR processing. Text classification was performed using TF -IDF and 
+SVM (scikit-learn, NumPy, pandas, joblib), and semantic search was implemented 
+using BioBERT (Transformers, PyTorch, sentence -transformers), N umPy, and 
+scikit-learn. 
+The backend APIs were developed using FastAPI and hosted on Google Cloud 
+Run, handling heavy ML processing, identity filtering, and API requests. Uploaded 
+
+--- PAGE 56 ---
+  
+   P a g e  | 55 
+Methodology 
+vaccination records were processed through OCR, classified using TF-IDF + SVM, 
+and embeddings were generated with BioBERT for semantic retrieval. Identity 
+filtering ensured that retrieved records matched the correct user. Processed data 
+and files were stor ed securely in Firebase Firestore and Firebase Storage. The 
+frontend was hosted on Vercel for scalable and efficient web delivery. 
+Development was conducted using Visual Studio Code and Google Colab, with Git 
+and GitHub for version control. The system was tested and accessed using Google 
+Chrome. 
+Table 2. Software Specification 
+Component Description 
+Operating System Windows 10/11, Ubuntu Linux 
+Programming 
+Languages 
+Python (Machine Learning Development); 
+JavaScript/TypeScript (Frontend and Firebase 
+Integration) 
+Frameworks and 
+Libraries 
+Frontend: Next.js, Tailwind CSS 
+OCR: PaddleOCR, OpenCV, Pillow, NumPy 
+Text Classification:  TF-IDF and SVM (scikit -learn, 
+NumPy, pandas, joblib) 
+Semantic Search:  BioBERT (Transformers, PyTorch, 
+sentence-transformers), NumPy, scikit-learn 
+
+--- PAGE 57 ---
+  
+   P a g e  | 56 
+Methodology 
+Backend/API: FastAPI  
+Database/Cloud 
+Services 
+ 
+Firebase (Authentication, Firestore, Storage) 
+Deployment / 
+Hosting 
+Google Cloud Run (Backend / ML model hosting), Vercel 
+(Frontend hosting) 
+Development Tools Visual Studio Code, Google Colab 
+Version Control Git/GitHub 
+Web Browser Google Chrome 
+This combination of hardware and software resources will enable the 
+efficient implementation, training, and testing of the OCR and NLP modules. It will 
+also ensure that the system performs optimally during digitization, retrieval, and 
+real-time interaction within the barangay health record management environment. 
+Test Cases 
+To make sure the web-based health record management system meets its 
+functional, performance, and usability requirements, testing will be a crucial step 
+in the system development process. To verify important elements, such as 
+database integration, OCR proc essing, NLP -based record retrieval, and user 
+authentication, the researcher will carry out a number of functional and 
+comparative tests. 
+
+--- PAGE 58 ---
+  
+   P a g e  | 57 
+Methodology 
+The accuracy and efficiency of each module's operation will be verified 
+during the testing phase. Through Firebase authentication, Test Case TC -01 will 
+confirm that authorized users can access their dashboards with legitimate login 
+credentials. In order to  verify that printed and scanned handwritten forms can be 
+successfully uploaded and saved in Firebase, Test Case TC -02 will examine the 
+document upload procedure. 
+With a goal of at least 90% accuracy against ground truth data, Test Case 
+TC-03 will assess text recognition accuracy using TesseractOCR for printed text 
+and PaddleOCR for handwritten text. By evaluating natural language queries like 
+"Show all DPT vaccinations for 2024," Test Case TC -04 will evaluate NLP-driven 
+record retrieval. Precision and recall metrics will be used to evaluate the results. 
+Test Case TC -05 will confirm Firebase's role -based access control by 
+confirming that unauthorized users are prevented from accessing restricted 
+modules, ensuring data security and stability. Last but not least, Test Case TC-06 
+will simulate up to 100 concurrent users in order to evaluate the system's scalability 
+under load while maintaining response times of less than two seconds per query. 
+Test 
+Case 
+ID 
+Test Case 
+Description 
+Test 
+Objective 
+Steps Expected 
+Result 
+Status 
+TC-
+01 
+User Login Verify user 
+can log in with 
+1. Go to 
+login page 
+User is 
+redirected to 
+the dashboard 
+Pass/Fail 
+
+--- PAGE 59 ---
+  
+   P a g e  | 58 
+Methodology 
+valid 
+credentials 
+2. Enter 
+credentials 
+3. Click 
+"Login" 
+TC-
+02 
+Document 
+Upload 
+Ensure 
+successful 
+upload of a 
+document 
+1. Log in 
+2. Go to 
+“Upload” 
+3. Select 
+and upload 
+document 
+Confirmation 
+message 
+displayed 
+Pass/Fail 
+TC-
+03 
+OCR 
+Accuracy 
+Evaluate OCR 
+text extraction 
+from uploaded 
+forms 
+1. Upload 
+scanned 
+health 
+record 
+2. Run OCR 
+process 
+3. Compare 
+recognized 
+text with 
+ground truth 
+OCR output 
+matches 
+expected text 
+with ≥90% 
+accuracy 
+Pass/Fail 
+
+--- PAGE 60 ---
+  
+   P a g e  | 59 
+Methodology 
+TC-
+04 
+NLP Retrieval 
+Accuracy 
+Check NLP 
+search 
+accuracy for 
+natural-
+language 
+queries 
+1. Input 
+“Show DPT 
+records for 
+2024” 
+2. Observe 
+search 
+results 
+Correct 
+records 
+retrieved and 
+displayed 
+Pass/Fail 
+TC-
+05 
+Unauthorized 
+Access 
+Ensure 
+restricted data 
+access is 
+denied 
+1. Attempt 
+to access 
+system 
+without 
+logging in 
+Access 
+denied and 
+redirected to 
+login page 
+Pass/Fail 
+TC-
+06 
+System Load 
+Handling 
+Assess 
+system 
+performance 
+under 100 
+concurrent 
+users 
+1. Simulate 
+100 
+concurrent 
+users 
+2. Measure 
+response 
+time 
+Average 
+response time 
+under 2 
+seconds per 
+query 
+Pass/Fail 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 61 ---
+  
+   P a g e  | 60 
+Bibliography 
+ 
+Bibliography 
+ 
+Katurura, M. C., & Cilliers, L. (2018). Electronic health record system in the public 
+healthcare sector of South Africa: A systematic literature review. African Journal 
+of Primary Health Care & Family Medicine, 10 (1), 1 –
+8.  https://phcfm.org/index.php/phcfm/article/view/1746/2927 
+ 
+Hossain, E., Rana, R., Higgins, N., Soar, J., Barua, P. D., Pisani, A. R., & Turner, 
+K. (2023). Natural Language Processing in Electronic Health Records in Relation 
+to Healthcare Decision -making: A Systematic Review . arXiv.  
+https://arxiv.org/abs/2306.12834 arXiv 
+ 
+Akhu-Zaheya, L., Al -Maaitah, R., & Bany Hani, S. (2018). Quality of nursing 
+documentation: Paper -based health records versus electronic -based health 
+records. Journal of Clinical Nursing, 27 (3–4), e578 –e589. 
+https://doi.org/10.1111/jocn.14097 
+ 
+J. M. Jayoma, E. S. Moyon and E. M. O. Morales, "OCR Based Document 
+Archiving and Indexing Using PyTesseract: A Record Management System for 
+DSWD Caraga, Philippines," 2020 IEEE 12th International Conference on 
+Humanoid, Nanotechnology, Information Technol ogy, Communication and 
+Control, Environment, and Management (HNICEM), Manila, Philippines, 2020, pp. 
+1-6, doi: 10.1109/HNICEM51456.2020.9400000. keywords: {Text 
+recognition;Libraries;Regulation;Optical character recognition software;Open 
+
+--- PAGE 62 ---
+  
+   P a g e  | 61 
+Bibliography 
+ 
+source 
+software;Nanotechnology;Indexing;PyTesseract;Digitization;OCR;Django;Record
+s Management}, 
+ 
+Sporici, D., Cușnir, E., & Boiangiu, C. -A. (2020). Improving the Accuracy of 
+Tesseract 4.0 OCR Engine Using Convolution -Based Preprocessing. Symmetry, 
+12(5), 715. https://doi.org/10.3390/sym12050715  
+ 
+Muntean, M., Brândaş, C., Cristescu, M. P., & Matiu, D. (2021). Improving cloud 
+integration using design science research. Economic Computation and Economic 
+Cybernetics Studies and Research, 55 (1), 201 -216. 
+https://doi.org/10.24818/18423264/55.1.21.13  
+Advancements in OCR: A Deep Learning Algorithm for Enhanced Text 
+Recognition. (2023). International Journal of Computer Applications Research and 
+Development, 11(2), 45–59. https://doi.org/10.5121/ijcard.2023.11205 
+Cristescu-Pompiliu, M., Muntean, M., Brândaş, C., & Matiu, D. (2021). Improving 
+cloud integration using design -science research. Economic Computation and 
+Economic Cybernetics Studies and Research, 55 (1), 201 –216. 
+https://doi.org/10.24818/18423264/55.1.21.13 
+Muntean, M., Brândaş, C., Cristescu, M. P., & Matiu, D. (2021). Improving cloud 
+integration using design-science research. Economic Computation and Economic 
+Cybernetics Studies and Research, 55 (1), 201 –216. 
+
+--- PAGE 63 ---
+  
+   P a g e  | 62 
+Bibliography 
+ 
+https://doi.org/10.24818/18423264/55.1.21.13 
+ (Duplicate listing merged if citing jointly with Cristescu-Pompiliu et al., 2021) 
+Sporici, D., Cușnir, E., & Boiangiu, C. -A. (2020). Improving the accuracy of 
+Tesseract 4.0 OCR engine using convolution -based preprocessing. Symmetry, 
+12(5), 715. https://doi.org/10.3390/sym12050715 
+View of Which OCR Toolset Is Good and Why: A Comparative Study. (2021). 
+Journal of Information Systems and Technology Research, 9(4), 112–123.* 
+Machine Learning in OCR Technology: Performance Evaluation of Deep Learning 
+Models. (2021). Procedia Computer Science, 184 , 591 –602. 
+https://doi.org/10.1016/j.procs.2021.03.074  
+Information 14(305): Machine Learning -Based Optical Character Recognition for 
+Document Digitization. (2023). MDPI Information, 14 (305), 1 –18. 
+https://doi.org/10.3390/info14020305  
+IEEE Conference Paper No. 3768150. (2020). A Comparative Performance 
+Analysis of OCR Engines for Text Extraction from Document Images.  2020 IEEE 
+12th International Conference on Humanoid, Nanotechnology, Information 
+Technology, Communication and Control, Environment, and Management 
+(HNICEM). https://doi.org/10.1109/HNICEM51456.2020.9400000  
+Awel, M. A., & Abidi, A. I. (2019). Review on optical character recognition . 
+International Research Journal of Engineering and Technology, 6(6), 3666–3671.  
+Belay, B., Habtegebrial, T., Meshesha, M., Liwicki, M., Belay, G., & Stricker, D. 
+(2020). Amharic OCR: An end -to-end learning approach. Applied Sciences, 
+10(1117), 1–13. https://doi.org/10.3390/app10111117 
+
+--- PAGE 64 ---
+  
+   P a g e  | 63 
+Bibliography 
+ 
+ 
+Clausner, C., Antonacopoulos, A., Derrick, T., & Pletschacher, S. (2019). 
+ICDAR2019 competition on recognition of early Indian printed documents 
+(REID2019).  
+Cui, C., Sun, T., Lin, M., Gao, T., Zhang, Y., Liu, J., … Ma, Y. (2025). PaddleOCR 
+3.0 technical report. arXiv preprint arXiv:2507.05595. 
+Das, S. K., Das, S. P., Dey, N., & Hassanien, A. -E. (Eds.). (2021). Machine 
+learning algorithms for industrial applications.  Springer. 
+https://doi.org/10.1007/978-3-030-50641-4 
+Hall, M., Merčun, T., Risse, T., & Duchateau, F. (Eds.). (2020). Digital libraries for 
+open knowledge  (TPDL 2020). Springer.  https://doi.org/10.1007/978-3-030-
+54956-5 
+Kobayashi, Y., Mimuro, S., Suzuki, S., Iijima, Y., & Okada, A. (2021). Basic 
+research on a handwritten note image recognition system that combines two 
+OCRs. Procedia Computer Science, 192 , 2596 –2605. 
+https://doi.org/10.1016/j.procs.2021.09.021 
+Martínek, J., Lenc, L., Kral, P., Nicolaou, A., & Christlein, V. (2019). Hybrid training 
+data for historical text OCR. Proceedings of the International Conference on 
+Document Analysis and Recognition , 1 –6. 
+https://doi.org/10.1109/ICDAR.2019.00096 
+Mei, J., Islam, A., Moh’d, A., Wu, Y., & Milios, E. E. (2018). MiBio: A dataset for 
+OCR post -processing evaluation. Data in Brief, 18 , 1 –5. 
+https://doi.org/10.1016/j.dib.2018.02.003 
+
+--- PAGE 65 ---
+  
+   P a g e  | 64 
+Bibliography 
+ 
+Mieskes, M., & Schmunk, S. (2019). OCR quality and NLP preprocessing. 
+Proceedings of the 55th Annual Meeting of the Association for Computational 
+Linguistics, 102–105.  
+Subedi, B., Yunusov, J., Gaybulayev, A., & Kim, T. -H. (2020). Development of a 
+low-cost industrial OCR system with an end -to-end deep learning technology. 
+Journal of Embedded Systems and Applications, 15 (2), 51 –60. Traub, M. C, 
+Samar, T., van Ossenbruggen, J., & Hardman, L. (2018). Impact of crowdsourcing 
+OCR improvements on retrievability bias. Proceedings of the 18th ACM/IEEE Joint 
+Conference on Digital Libraries, 1–8. https://doi.org/10.1145/3197026.3197053 
+Vedaldi, A., Bischof, H., Brox, T., & Frahm, J. -M. (Eds.). (2020). Computer vision 
+– ECCV 2020: Proceedings of the 16th European Conference on Computer Vision 
+(Part XII). Springer. https://doi.org/10.1007/978-3-030-58529-7 
+Wick, C., Reul, C., & Puppe, F. (2018). Comparison of OCR accuracy on early 
+printed books using the open -source engines Calamari and OCRopus. JLCL, 
+33(1), 79–96.  
+      
+ 
+ 
+ 
+ 
