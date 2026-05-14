@@ -2,7 +2,7 @@ import type { jsPDF } from "jspdf";
 import type { Styles, UserOptions } from "jspdf-autotable";
 import type { ClinicRecordDraft } from "@/types/clinic-record";
 import type { VaccinationRecordDocument } from "@/types/records";
-//import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
+
 
 type PdfDocument = jsPDF & {
   lastAutoTable?: {
@@ -21,7 +21,7 @@ export async function downloadStructuredRecordsPdf(
     import("jspdf-autotable"),
   ]);
   const autoTable = autoTableModule.default as AutoTable;
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" }) as PdfDocument;
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" }) as PdfDocument;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 36;
@@ -35,16 +35,27 @@ export async function downloadStructuredRecordsPdf(
     subject: "DigiVax structured digitalized records",
     creator: "DigiVax",
   });
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
-  doc.text(title, margin, 36);
+  doc.setFontSize(13);
+  doc.text("City Government of Legzpi", margin, 34);
+  doc.setFontSize(12);
+  doc.text("CITY HEALTH DEPARTMENT", margin, 50);
+  doc.setFontSize(11);
+  doc.text("Legapi City", margin, 66);
+
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Under Five Clinic Record", margin, 88);
   doc.setFontSize(9);
+  doc.text("(Philhealth and Non-Philhealth)", margin, 102);
+
+  doc.setFontSize(8);
   doc.setTextColor(90, 99, 115);
-  doc.text(`Generated ${generatedAt}. Total records: ${records.length}`, margin, 53);
+  doc.text(`Generated ${generatedAt}. Total records: ${records.length}`, margin, 118);
   doc.setTextColor(15, 23, 42);
 
-  let cursorY = 78;
+  let cursorY = 132;
 
   records.forEach((record, index) => {
     if (index > 0) {
@@ -79,16 +90,16 @@ function renderRecord(
   let cursorY = startY;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(15, 23, 42);
   doc.text(record.patientName || "Unknown Patient", margin, cursorY);
-  cursorY += 12;
+  cursorY += 11;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.text(record.id, margin, cursorY);
   doc.setTextColor(15, 23, 42);
-  cursorY += 14;
+  cursorY += 13;
 
   if (record.clinicRecord) {
     cursorY = renderClinicRecord(autoTable, doc, record.clinicRecord, cursorY, margin, pageWidth, pageHeight);
@@ -109,7 +120,7 @@ function renderClinicRecord(
   pageHeight: number,
 ) {
   let cursorY = startY;
-  addSectionTitle(doc, "Patient Details", margin, cursorY);
+  addSectionTitle(doc, "Child Details", margin, cursorY);
   const patientRows = [
     ["Name", record.patient.name, "Nutritional Status", record.patient.nutritionalStatus],
     ["Age", record.patient.age, "Birth Weight", record.patient.birthWeight],
@@ -127,9 +138,9 @@ function renderClinicRecord(
     tableWidth: pageWidth - margin * 2,
     styles: baseCellStyle(),
     columnStyles: {
-      0: { cellWidth: 90, fontStyle: "bold", fillColor: [241, 245, 249] },
-      1: { cellWidth: 270 },
-      2: { cellWidth: 115, fontStyle: "bold", fillColor: [241, 245, 249] },
+      0: { cellWidth: 80, fontStyle: "bold", fillColor: [241, 245, 249] },
+      1: { cellWidth: 220 },
+      2: { cellWidth: 100, fontStyle: "bold", fillColor: [241, 245, 249] },
       3: { cellWidth: "auto" },
     },
   });
@@ -159,13 +170,13 @@ function renderClinicRecord(
       halign: "center",
     },
     columnStyles: {
-      0: { cellWidth: 68 },
-      1: { cellWidth: 45 },
-      2: { cellWidth: 55 },
-      3: { cellWidth: 105 },
-      4: { cellWidth: 105 },
-      5: { cellWidth: 105 },
-      6: { cellWidth: "auto" },
+      0: { cellWidth: 54 },
+      1: { cellWidth: 42 },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 90 },
+      4: { cellWidth: 95 },
+      5: { cellWidth: 95 },
+      6: { cellWidth: 100 },
     },
   });
 
@@ -189,7 +200,12 @@ function renderCorrectedText(
     theme: "grid",
     margin: { left: margin, right: margin },
     tableWidth: pageWidth - margin * 2,
-    styles: { ...baseCellStyle(), font: "courier", fontSize: 7.5 },
+    styles: {
+      ...baseCellStyle(),
+      font: "courier",
+      fontSize: 7,
+      cellPadding: 3,
+    },
   });
 
   return getTableEndY(doc) + 16;
@@ -208,8 +224,8 @@ function addSectionTitle(doc: PdfDocument, title: string, x: number, y: number) 
 function baseCellStyle(): Partial<Styles> {
   return {
     font: "helvetica",
-    fontSize: 8,
-    cellPadding: 4,
+    fontSize: 7.5,
+    cellPadding: 3,
     lineColor: [203, 213, 225] as [number, number, number],
     lineWidth: 0.5,
     textColor: [15, 23, 42] as [number, number, number],

@@ -142,10 +142,14 @@ export default function SearchPage() {
     const structuredRecord = withDisplayClinicRecord(record);
     downloadStructuredRecordsPdf(
       [structuredRecord],
-      `${record.id}-structured-record.pdf`,
+      `${sanitizeFileName(record.patientName || record.id)}.pdf`,
       `DigiVax Structured Record - ${record.patientName}`,
     );
   };
+
+  function sanitizeFileName(value: string) {
+    return value.replace(/[^a-zA-Z0-9._-]/g, "_");
+  }
 
   const loadCompiledRecords = async () => {
     setIsCompiledLoading(true);
