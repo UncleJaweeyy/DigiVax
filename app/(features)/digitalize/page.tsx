@@ -212,7 +212,7 @@ export default function DigitalizePage() {
           </div>
 
           <p className="text-slate-400 text-center text-sm mt-4 px-4 leading-relaxed">
-            Drop your vaccination certificate here or browse to upload. Supports JPG, PNG, JPEG, and PDF.
+            Drop your vaccination certificate here or browse to upload. Supports JPG, PNG, and  JPEG.
           </p>
 
           <Button
@@ -280,7 +280,8 @@ export default function DigitalizePage() {
           markdown={ocrMarkdown}
           isSaving={isSaving}
           onChange={handleClinicDraftChange}
-          onClose={resetDigitalization}
+          onClose={() => setIsReviewOpen(false)}
+          onReset={resetDigitalization}
           onSave={handleSave}
         />
       )}

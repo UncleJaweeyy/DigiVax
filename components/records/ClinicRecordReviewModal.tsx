@@ -14,6 +14,7 @@ interface ClinicRecordReviewModalProps {
   isSaving: boolean;
   onChange: (draft: ClinicRecordDraft) => void;
   onClose: () => void;
+  onReset: () => void;
   onSave: () => void;
 }
 
@@ -78,6 +79,7 @@ export default function ClinicRecordReviewModal({
   isSaving,
   onChange,
   onClose,
+  onReset,
   onSave,
 }: ClinicRecordReviewModalProps) {
   const updatePatient = (key: keyof ClinicPatientDetails, value: string) => {
@@ -143,9 +145,9 @@ export default function ClinicRecordReviewModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onReset}
             className="grid h-10 w-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Close review"
+            aria-label="Close and reset"
           >
             <X size={20} />
           </button>
