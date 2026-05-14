@@ -100,6 +100,23 @@ export default function DigitalizePage() {
     setTextPreview(clinicRecordToText(draft));
   };
 
+  const resetDigitalization = () => {
+    setTextPreview("");
+    setStatus("idle");
+    setIsEditing(false);
+    setSelectedFile(null);
+    setClinicDraft(null);
+    setOcrMarkdown("");
+    setOcrMetadata(undefined);
+    setOcrVisualization(undefined);
+    setSourcePreviewUrl((currentUrl) => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      return "";
+    });
+    setIsReviewOpen(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
 
@@ -162,6 +179,7 @@ export default function DigitalizePage() {
     <div className="p-8 bg-slate-50 min-h-screen">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900">Digitilize a File</h1>
+        <p className="text-lg text-slate-600 mt-2">Upload vaccination records and review extracted data</p>
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex overflow-hidden min-h-[550px]">
@@ -241,19 +259,6 @@ export default function DigitalizePage() {
               >
                 <Table2 size={18} /> Review Clinic Table
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={toggleEditMode}
-                disabled={status !== "done"}
-                className={`flex items-center gap-2 transition-all ${isEditing ? "bg-blue-50 border-blue-600 text-blue-600" : ""}`}
-              >
-                {isEditing ? (
-                  <><Check size={18} /> Finish Editing</>
-                ) : (
-                  <><Edit3 size={18} /> Edit Extracted Text</>
-                )}
-              </Button>
             </div>
 
             <Button
@@ -275,7 +280,7 @@ export default function DigitalizePage() {
           markdown={ocrMarkdown}
           isSaving={isSaving}
           onChange={handleClinicDraftChange}
-          onClose={() => setIsReviewOpen(false)}
+          onClose={resetDigitalization}
           onSave={handleSave}
         />
       )}

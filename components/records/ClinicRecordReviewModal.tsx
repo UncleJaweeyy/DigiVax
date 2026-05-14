@@ -320,7 +320,7 @@ export default function ClinicRecordReviewModal({
 
         <div className="flex justify-end gap-3 border-t border-slate-200 bg-white px-5 py-4">
           <Button type="button" variant="outline" onClick={onClose}>
-            Continue Editing
+            Cancel
           </Button>
           <Button type="button" className="flex items-center gap-2" onClick={onSave} disabled={isSaving}>
             <Save size={16} /> {isSaving ? "Saving..." : "Save Record"}
