@@ -198,7 +198,7 @@ export default function DigitalizePage() {
             ref={fileInputRef}
             className="hidden"
             onChange={handleFileChange}
-            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
           />
 
           <div
