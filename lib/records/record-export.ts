@@ -106,7 +106,7 @@ function renderClinicRecord(
   pageHeight: number,
 ) {
   let cursorY = startY;
-  addSectionTitle(doc, "Child Details", margin, cursorY);
+  addSectionTitle(doc, "Child Details", pageWidth / 2, cursorY);
   const patientRows = [
     ["Name", record.patient.name, "Nutritional Status", record.patient.nutritionalStatus],
     ["Age", record.patient.age, "Birth Weight", record.patient.birthWeight],
@@ -132,7 +132,7 @@ function renderClinicRecord(
   });
 
   cursorY = ensureSpace(doc, getTableEndY(doc) + 22, 130, margin, pageHeight);
-  addSectionTitle(doc, "Findings / Chief Complaint", margin, cursorY);
+  addSectionTitle(doc, "Findings / Chief Complaint", pageWidth / 2, cursorY);
   autoTable(doc, {
     startY: cursorY + 8,
     head: [["Date", "WT", "V/S", "Episode", "Danger Signs", "Other CC", "Management"]],
@@ -179,7 +179,7 @@ function renderCorrectedText(
   pageHeight: number,
 ) {
   const cursorY = ensureSpace(doc, startY, 120, margin, pageHeight);
-  addSectionTitle(doc, "Corrected OCR Text", margin, cursorY);
+  addSectionTitle(doc, "Corrected OCR Text", pageWidth / 2, cursorY);
   autoTable(doc, {
     startY: cursorY + 8,
     body: [[record.correctedText || "No corrected OCR text saved."]],
@@ -203,7 +203,7 @@ function addSectionTitle(doc: PdfDocument, title: string, x: number, y: number) 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
-  doc.text(title.toUpperCase(), x, y);
+  doc.text(title.toUpperCase(), x, y, { align: "center" });
   doc.setTextColor(15, 23, 42);
 }
 
