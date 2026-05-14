@@ -38,22 +38,17 @@ export async function downloadStructuredRecordsPdf(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text("City Government of Legzpi", margin, 34);
+  doc.text("City Government of Legzpi", pageWidth / 2, 34, { align: "center" });
   doc.setFontSize(12);
-  doc.text("CITY HEALTH DEPARTMENT", margin, 50);
+  doc.text("CITY HEALTH DEPARTMENT", pageWidth / 2, 50, { align: "center" });
   doc.setFontSize(11);
-  doc.text("Legapi City", margin, 66);
+  doc.text("Legapi City", pageWidth / 2, 66, { align: "center" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text("Under Five Clinic Record", margin, 88);
+  doc.text("Under Five Clinic Record", pageWidth / 2, 88, { align: "center" });
   doc.setFontSize(9);
-  doc.text("(Philhealth and Non-Philhealth)", margin, 102);
-
-  doc.setFontSize(8);
-  doc.setTextColor(90, 99, 115);
-  doc.text(`Generated ${generatedAt}. Total records: ${records.length}`, margin, 118);
-  doc.setTextColor(15, 23, 42);
+  doc.text("(Philhealth and Non-Philhealth)", pageWidth / 2, 102, { align: "center" });
 
   let cursorY = 132;
 
@@ -72,6 +67,9 @@ export async function downloadStructuredRecordsPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
+    if (page === 1) {
+      doc.text(`Generated ${generatedAt}. Total records: ${records.length}`, margin, pageHeight - 18);
+    }
     doc.text(`Page ${page} of ${pageCount}`, pageWidth - margin, pageHeight - 18, { align: "right" });
   }
 
@@ -88,18 +86,6 @@ function renderRecord(
   pageHeight: number,
 ) {
   let cursorY = startY;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(15, 23, 42);
-  doc.text(record.patientName || "Unknown Patient", margin, cursorY);
-  cursorY += 11;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  doc.text(record.id, margin, cursorY);
-  doc.setTextColor(15, 23, 42);
-  cursorY += 13;
 
   if (record.clinicRecord) {
     cursorY = renderClinicRecord(autoTable, doc, record.clinicRecord, cursorY, margin, pageWidth, pageHeight);
