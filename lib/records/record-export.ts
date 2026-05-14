@@ -2,7 +2,7 @@ import type { jsPDF } from "jspdf";
 import type { Styles, UserOptions } from "jspdf-autotable";
 import type { ClinicRecordDraft } from "@/types/clinic-record";
 import type { VaccinationRecordDocument } from "@/types/records";
-import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
+//import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
 
 type PdfDocument = jsPDF & {
   lastAutoTable?: {
