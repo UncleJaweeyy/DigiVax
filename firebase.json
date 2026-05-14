@@ -6,6 +6,14 @@
       "ignore": [
         "node_modules",
         ".git",
+        ".next",
+        ".python",
+        ".venv",
+        "**/.venv",
+        "**/__pycache__",
+        "python-*-amd64.exe",
+        "thesis_extracted_text.txt",
+        "*.log",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"

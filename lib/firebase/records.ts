@@ -24,7 +24,12 @@ import { auth, db } from "@/lib/firebase/client";
 import { writeClientAuditLog } from "@/lib/firebase/audit-client";
 import { getUserProfile } from "@/lib/firebase/users";
 import { parseVaccinationText } from "@/lib/records/parser";
-import { buildSemanticChunks, rankVaccinationRecords } from "@/lib/records/semantic-search";
+import { getBioBertEmbedding } from "@/lib/records/biobert-client";
+import {
+  buildSemanticChunks,
+  buildSemanticEmbeddingText,
+  rankVaccinationRecordsWithBioBert,
+} from "@/lib/records/semantic-search";
 
 const recordsCollection = "vaccinationRecords";
 
@@ -44,9 +49,11 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
   const correctedText = input.correctedText?.trim() || input.rawText.trim();
   const parsed = parseVaccinationText(correctedText);
   const semanticChunks = buildSemanticChunks(input.clinicRecord, input.ocrMetadata, correctedText);
+  const semanticEmbeddingText = buildSemanticEmbeddingText(input.clinicRecord, input.ocrMetadata, correctedText);
+  const bioBertEmbedding = await getBioBertEmbedding(semanticEmbeddingText);
 
   // Store both display fields and normalized/searchable fields for fast list rendering.
-  const docRef = await addDoc(collection(db, recordsCollection), {
+  const payload: Record<string, unknown> = {
     patientName: parsed.patientName,
     patientNameLower: parsed.patientName.toLowerCase(),
     vaccineType: parsed.vaccineType,
@@ -67,7 +74,14 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
     createdByName: profile.name || profile.email,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (bioBertEmbedding) {
+    payload.semanticVector = bioBertEmbedding.vector;
+    payload.semanticModel = bioBertEmbedding.model;
+  }
+
+  const docRef = await addDoc(collection(db, recordsCollection), payload);
 
   await writeClientAuditLog({
     action: "Digitalized Record",
@@ -95,7 +109,7 @@ export async function getVaccinationRecords(queryText = ""): Promise<Vaccination
     return documents.map(mapRecord);
   }
 
-  return rankVaccinationRecords(documents, normalizedQuery)
+  return (await rankVaccinationRecordsWithBioBert(documents, normalizedQuery))
     .slice(0, 100)
     .map((match) => ({
       ...mapRecord(match.record),
@@ -140,6 +154,8 @@ export async function updateVaccinationRecord(
 
   const parsed = parseVaccinationText(correctedText);
   const semanticChunks = buildSemanticChunks(updates.clinicRecord, undefined, correctedText);
+  const semanticEmbeddingText = buildSemanticEmbeddingText(updates.clinicRecord, undefined, correctedText);
+  const bioBertEmbedding = await getBioBertEmbedding(semanticEmbeddingText);
 
   // Re-parse edited OCR text so corrected values immediately update search and dashboards.
   const payload: Record<string, unknown> = {
@@ -158,6 +174,11 @@ export async function updateVaccinationRecord(
   if (updates.clinicRecord) {
     payload.clinicRecord = updates.clinicRecord;
     payload.semanticChunks = semanticChunks;
+  }
+
+  if (bioBertEmbedding) {
+    payload.semanticVector = bioBertEmbedding.vector;
+    payload.semanticModel = bioBertEmbedding.model;
   }
 
   await updateDoc(doc(db, recordsCollection, recordId), payload);
@@ -209,6 +230,10 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
     semanticChunks: Array.isArray(data.semanticChunks)
       ? data.semanticChunks.filter((value): value is string => typeof value === "string")
       : [],
+    semanticVector: Array.isArray(data.semanticVector)
+      ? data.semanticVector.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+      : [],
+    semanticModel: getString(data.semanticModel),
     searchKeywords: Array.isArray(data.searchKeywords)
       ? data.searchKeywords.filter((value): value is string => typeof value === "string")
       : [],

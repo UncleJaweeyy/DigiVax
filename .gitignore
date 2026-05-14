@@ -6,6 +6,7 @@
 /python-*-amd64.exe
 /backend/ocr/.venv
 /backend/medical-ocr/.venv
+/backend/semantic-search/.venv
 .medical-ocr-local.pid
 /.pnp
 .pnp.*
@@ -41,6 +42,7 @@ next-dev.err.log
 firebase-debug.log
 firebase-debug.*.log
 backend/ocr/*.log
+backend/semantic-search/*.log
 backend/ocr/demo-ocr-smoke.png
 backend/medical-ocr/*.log
 auth-users.json

@@ -110,6 +110,8 @@ service cloud.firestore {
         "clinicRecord",
         "ocrMetadata",
         "semanticChunks",
+        "semanticVector",
+        "semanticModel",
         "searchKeywords",
         "createdBy",
         "createdByName",
@@ -168,6 +170,14 @@ service cloud.firestore {
           !request.resource.data.keys().hasAny(["semanticChunks"])
           || request.resource.data.semanticChunks is list
         )
+        && (
+          !request.resource.data.keys().hasAny(["semanticVector"])
+          || request.resource.data.semanticVector is list
+        )
+        && (
+          !request.resource.data.keys().hasAny(["semanticModel"])
+          || request.resource.data.semanticModel is string
+        )
         && request.resource.data.searchKeywords is list
         && request.resource.data.createdBy == request.auth.uid
         && validString(request.resource.data.createdByName)
@@ -187,6 +197,8 @@ service cloud.firestore {
           "status",
           "clinicRecord",
           "semanticChunks",
+          "semanticVector",
+          "semanticModel",
           "searchKeywords",
           "updatedAt"
         ])
@@ -206,6 +218,14 @@ service cloud.firestore {
         && (
           !request.resource.data.keys().hasAny(["semanticChunks"])
           || request.resource.data.semanticChunks is list
+        )
+        && (
+          !request.resource.data.keys().hasAny(["semanticVector"])
+          || request.resource.data.semanticVector is list
+        )
+        && (
+          !request.resource.data.keys().hasAny(["semanticModel"])
+          || request.resource.data.semanticModel is string
         )
         && request.resource.data.searchKeywords is list
         && request.resource.data.updatedAt == request.time;

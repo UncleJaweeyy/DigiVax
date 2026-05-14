@@ -1,5 +1,6 @@
 import type { OcrExtractionMetadata } from "@/types/clinic-record";
 import type { VaccinationRecordDocument } from "@/types/records";
+import { getBioBertRankings } from "@/lib/records/biobert-client";
 import { getCrfLabelCounts, normalizeCrfLabel } from "@/lib/records/crf-labels";
 import { clinicRecordToText } from "@/lib/records/clinic-format";
 
@@ -35,7 +36,7 @@ const stopWords = new Set([
 const conceptAliases: Record<string, string[]> = {
   PATIENT_INFORMATION: ["child", "childname", "name", "patient", "mother", "father", "address", "birth", "dob"],
   DATE: ["date", "day", "month", "year", "visit", "vaccination", "administered"],
-  VACCINE: ["vaccine", "immunization", "immunisation", "bcg", "hepb", "hepa", "penta", "dpt", "opv", "ipv", "pcv", "mcv", "rota", "flu", "vitamin", "am"],
+  VACCINE: ["vaccine", "immunization", "immunisation", "bcg", "hepb", "hepa", "hep", "hepatitis", "hepatitisb", "penta", "dpt", "opv", "ipv", "pcv", "mcv", "rota", "flu", "vitamin", "am"],
   FINDINGS: ["finding", "findings", "complaint", "episode", "diarrhea", "ari", "danger", "sign", "management", "fever", "cough", "weight", "height"],
   NUTRITIONAL_STATUS: ["nutrition", "nutritional", "feeding", "breastfeeding", "birthweight", "weight", "epi"],
   HEADER: ["header", "form", "clinic", "underfive", "under", "five"],
@@ -66,6 +67,47 @@ export function rankVaccinationRecords(
     })
     .filter((match) => match.score > 0)
     .sort((a, b) => b.score - a.score || compareDatesDesc(a.record.createdAt, b.record.createdAt));
+}
+
+export async function rankVaccinationRecordsWithBioBert(
+  records: VaccinationRecordDocument[],
+  queryText: string,
+): Promise<SemanticRecordMatch[]> {
+  const bioBertResults = await getBioBertRankings(
+    queryText,
+    records.map((record) => ({
+      id: record.id,
+      text: buildSemanticEmbeddingText(record.clinicRecord, record.ocrMetadata, record.correctedText),
+      embedding: record.semanticVector,
+    })),
+  );
+
+  if (!bioBertResults) {
+    return rankVaccinationRecords(records, queryText);
+  }
+
+  const fallbackMatches = rankVaccinationRecords(records, queryText);
+  const fallbackById = new Map(fallbackMatches.map((match) => [match.record.id, match]));
+  const bioBertScoreById = new Map(bioBertResults.map((result) => [result.id, result.score]));
+  const ranked = records
+    .map((record) => {
+      const semanticScore = bioBertScoreById.get(record.id) || 0;
+      const fallbackMatch = fallbackById.get(record.id);
+      const lexicalScore = getLexicalScore(record, queryText);
+      const score = semanticScore > 0
+        ? semanticScore + lexicalScore
+        : fallbackMatch?.score || 0;
+
+      return {
+        record,
+        score: Number(score.toFixed(4)),
+        matchedLabels: fallbackMatch?.matchedLabels || [],
+      };
+    })
+    .filter((match) => match.score > 0)
+    .sort((a, b) => b.score - a.score || compareDatesDesc(a.record.createdAt, b.record.createdAt));
+
+  return ranked.length ? ranked : fallbackMatches;
 }
 
 export function buildSemanticChunks(
@@ -110,6 +152,14 @@ export function buildSemanticChunks(
   }
 
   return Array.from(new Set(chunks.map((chunk) => chunk.trim()).filter(Boolean))).slice(0, 80);
+}
+
+export function buildSemanticEmbeddingText(
+  clinicRecord: VaccinationRecordDocument["clinicRecord"] | undefined,
+  metadata: OcrExtractionMetadata | undefined,
+  correctedText = "",
+) {
+  return buildSemanticChunks(clinicRecord, metadata, correctedText).join("\n");
 }
 
 function buildRecordVector(record: VaccinationRecordDocument) {

@@ -29,6 +29,8 @@ export interface VaccinationRecordDocument {
   clinicRecord?: ClinicRecordDraft;
   ocrMetadata?: OcrExtractionMetadata;
   semanticChunks?: string[];
+  semanticVector?: number[];
+  semanticModel?: string;
   searchKeywords: string[];
   createdBy: string;
   createdByName: string;

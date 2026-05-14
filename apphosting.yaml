@@ -22,3 +22,13 @@ env:
     value: "false"
     availability:
       - RUNTIME
+
+  - variable: BIOBERT_API_URL
+    value: https://digivax-biobert-6fntyewn7q-as.a.run.app
+    availability:
+      - RUNTIME
+
+  - variable: BIOBERT_API_KEY
+    secret: digivaxBioBertApiKey
+    availability:
+      - RUNTIME
