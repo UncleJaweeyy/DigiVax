@@ -2,7 +2,7 @@ import type { jsPDF } from "jspdf";
 import type { Styles, UserOptions } from "jspdf-autotable";
 import type { ClinicRecordDraft } from "@/types/clinic-record";
 import type { VaccinationRecordDocument } from "@/types/records";
-import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
+//import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
 
 type PdfDocument = jsPDF & {
   lastAutoTable?: {
@@ -96,8 +96,8 @@ function renderRecord(
     cursorY = renderCorrectedText(autoTable, doc, record, cursorY, margin, pageWidth, pageHeight);
   }
 
-  cursorY = ensureSpace(doc, cursorY, 95, margin, pageHeight);
-  return renderCrfSummary(autoTable, doc, record, cursorY, margin, pageWidth);
+  //cursorY = ensureSpace(doc, cursorY, 95, margin, pageHeight);
+  //return renderCrfSummary(autoTable, doc, record, cursorY, margin, pageWidth);
 }
 
 function renderClinicRecord(
@@ -196,40 +196,40 @@ function renderCorrectedText(
   return getTableEndY(doc) + 16;
 }
 
-function renderCrfSummary(
-  autoTable: AutoTable,
-  doc: PdfDocument,
-  record: VaccinationRecordDocument,
-  startY: number,
-  margin: number,
-  pageWidth: number,
-) {
-  addSectionTitle(doc, `CRF Label Predictions (${getCrfPredictionTotal(record.ocrMetadata)} tokens)`, margin, startY);
-  const counts = getCrfLabelCounts(record.ocrMetadata);
+// function renderCrfSummary(
+//   autoTable: AutoTable,
+//   doc: PdfDocument,
+//   record: VaccinationRecordDocument,
+//   startY: number,
+//   margin: number,
+//   pageWidth: number,
+// ) {
+//   addSectionTitle(doc, `CRF Label Predictions (${getCrfPredictionTotal(record.ocrMetadata)} tokens)`, margin, startY);
+//   const counts = getCrfLabelCounts(record.ocrMetadata);
 
-  autoTable(doc, {
-    startY: startY + 8,
-    head: [["Label / Category", "Prediction Count"]],
-    body: counts.length
-      ? counts.map((item) => [item.displayLabel, String(item.count)])
-      : [["No CRF token labels were saved for this record.", "0"]],
-    theme: "grid",
-    margin: { left: margin, right: margin },
-    tableWidth: pageWidth - margin * 2,
-    styles: baseCellStyle(),
-    headStyles: {
-      fillColor: [226, 232, 240],
-      textColor: [15, 23, 42],
-      fontStyle: "bold",
-    },
-    columnStyles: {
-      0: { cellWidth: 260 },
-      1: { cellWidth: 120, halign: "right" },
-    },
-  });
+//   autoTable(doc, {
+//     startY: startY + 8,
+//     head: [["Label / Category", "Prediction Count"]],
+//     body: counts.length
+//       ? counts.map((item) => [item.displayLabel, String(item.count)])
+//       : [["No CRF token labels were saved for this record.", "0"]],
+//     theme: "grid",
+//     margin: { left: margin, right: margin },
+//     tableWidth: pageWidth - margin * 2,
+//     styles: baseCellStyle(),
+//     headStyles: {
+//       fillColor: [226, 232, 240],
+//       textColor: [15, 23, 42],
+//       fontStyle: "bold",
+//     },
+//     columnStyles: {
+//       0: { cellWidth: 260 },
+//       1: { cellWidth: 120, halign: "right" },
+//     },
+//   });
 
-  return getTableEndY(doc) + 16;
-}
+//   return getTableEndY(doc) + 16;
+// }
 
 function addSectionTitle(doc: PdfDocument, title: string, x: number, y: number) {
   doc.setFont("helvetica", "bold");
