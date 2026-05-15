@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 DATE_RE = re.compile(r"\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{2,4}")
 VACCINE_RE = re.compile(
-    r"\b(BCG|HEPA\s*B|HEPAB|HEPB|DPT|DTP|OPV|0PV|IPV|PCV|PENTA|PENTO|ROTA|AM|MCV|MMR)\s*\d*\b",
+    r"\b(BCG|HEPA\s*B|HEPAB|HEPA|HEPB|DPT|DTP|OPV|0PV|IPV|PCV|PENTA|PENTO|ROTA|AM|MCV|MMR|FLU|TT|TD|VIT|JE)\s*\d*\b",
     re.IGNORECASE,
 )
 

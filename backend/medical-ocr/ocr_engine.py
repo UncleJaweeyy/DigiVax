@@ -89,7 +89,7 @@ FIELD_KEYWORDS = {
     "V/S":                [],
     "Episode":            ["diarrhea", "colds", "fever", "vomit"],
     "Danger Signs":       ["ari", "danger"],
-    "Other CC":           ["bcg", "hepa", "opv", "pcv", "penta", "mmr"],
+    "Other CC":           ["bcg", "hepa", "opv", "pcv", "penta", "mmr", "flu", "tt", "td", "vit", "je", "mcv", "rota", "dpt", "dpt booster"],
     "Management":         [],
 }
 
