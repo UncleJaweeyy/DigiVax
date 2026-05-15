@@ -1,6 +1,8 @@
 import type { ClinicRecordDraft, ReviewedRecordLabel } from "@/types/clinic-record";
 import { getCrfLabelDisplayName, normalizeCrfLabel } from "@/lib/records/crf-labels";
 
+const vaccinePattern = /\b(BCG|HEPA\s*B|HEPAB|HEP\s*B|DPT|DTP|OPV\d*|IPV|PCV|PENTA\w*|ROTA|AM|MCV|MMR)\b/i;
+
 const textLineLabels: Array<{ pattern: RegExp; label: string; field: string }> = [
   { pattern: /^name\s*:/i, label: "PATIENT_INFORMATION", field: "Name" },
   { pattern: /^age\s*:/i, label: "PATIENT_INFORMATION", field: "Age" },
@@ -59,7 +61,7 @@ function buildClinicRecordLabels(record: ClinicRecordDraft) {
   add(labels, "PATIENT_INFORMATION", "Father's Name", patient.fatherName);
   add(labels, "NUTRITIONAL_STATUS", "Nutritional Status", patient.nutritionalStatus);
   add(labels, "NUTRITIONAL_STATUS", "Birth Weight", patient.birthWeight);
-  add(labels, "NUTRITIONAL_STATUS", "EPI Status", patient.epiStatus);
+  add(labels, "NUTRITIONAL_STATUS", "EPI Status", normalizeCheckedStatus(patient.epiStatus));
   add(labels, "NUTRITIONAL_STATUS", "Type of Feeding", patient.feedingType);
 
   for (const vaccine of record.vaccines) {
@@ -73,11 +75,59 @@ function buildClinicRecordLabels(record: ClinicRecordDraft) {
     add(labels, "FINDINGS", "Vital Signs", visit.vs, row);
     add(labels, "FINDINGS", "Episode", visit.episode, row);
     add(labels, "FINDINGS", "Danger Signs", visit.dangerSigns, row);
-    add(labels, "FINDINGS", "Other Chief Complaint", visit.otherCc, row);
-    add(labels, "FINDINGS", "Management", visit.management, row);
+    addVisitOtherCcLabels(labels, visit.otherCc, row);
+    add(labels, "FINDINGS", "Management", isLikelyOcrNoise(visit.management) ? "" : visit.management, row);
   });
 
   return labels;
+}
+
+function addVisitOtherCcLabels(labels: ReviewedRecordLabel[], value: string, row: number) {
+  const parts = splitClinicalList(value);
+  const vaccines = parts.filter(isVaccineLike);
+  const findings = parts.filter((part) => !isVaccineLike(part));
+
+  for (const vaccine of vaccines) {
+    add(labels, "VACCINE", "Visit Vaccine", normalizeVaccineName(vaccine), row);
+  }
+
+  if (findings.length) {
+    add(labels, "FINDINGS", "Other Chief Complaint", findings.join(" "), row);
+  }
+}
+
+function splitClinicalList(value: string) {
+  return value
+    .split(/\s*(?:\/|,|;|\n)\s*/g)
+    .map((item) => item.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+function isVaccineLike(value: string) {
+  return vaccinePattern.test(value);
+}
+
+function normalizeVaccineName(value: string) {
+  return value
+    .replace(/\bHEPA\s*B\b/i, "Hepa B")
+    .replace(/\bHEP\s*B\b/i, "Hepa B")
+    .replace(/\bHEPAB\b/i, "Hepa B")
+    .replace(/\bPENTAT\b/i, "Penta")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeCheckedStatus(value: string) {
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  if (/^\(\s*\)\s*(complete|incomplete)$/i.test(trimmed)) return "";
+  return trimmed.replace(/^\([^)]*[x✓✔]\)\s*/i, "");
+}
+
+function isLikelyOcrNoise(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/[a-z0-9]/i.test(trimmed)) return false;
+  return Array.from(trimmed).length <= 2;
 }
 
 function buildCorrectedTextLabels(text: string) {

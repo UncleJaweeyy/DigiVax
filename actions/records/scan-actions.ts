@@ -57,6 +57,9 @@ const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"]
 const useMockOcr = process.env.OCR_USE_MOCK === "true";
 const ocrApiUrl = process.env.OCR_API_URL;
 const ocrApiKey = process.env.OCR_API_KEY;
+const vaccineTokenPattern = /\b(BCG|HEPA\s*B|HEPAB|HEP\s*B|DPT|DTP|OPV\d*|IPV|PCV|PENTA\w*|ROTA|AM|MCV|MMR)\b/i;
+const dateTokenPattern = /\b\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{2,4}\b/;
+const tableHeaderPattern = /^(date|wt|v\/s|episode|danger signs|other cc|management|\(diarrhea\)|\(ari\)|findings\s*\/?\s*chief complaint)$/i;
 
 export async function processScan(formData: FormData): Promise<ScanResult> {
   try {
@@ -140,6 +143,7 @@ function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefin
     const [x1, y1, x2, y2] = bbox;
     const x = roundNumber((x1 + x2) / 2);
     const y = roundNumber((y1 + y2) / 2);
+    const section = normalizeTokenSection(item.section) || inferTokenSection(y, x, imageSize);
     const token: OcrTokenMetadata = {
       text,
       x,
@@ -147,8 +151,8 @@ function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefin
       w: roundNumber(x2 - x1),
       h: roundNumber(y2 - y1),
       row: typeof item.row === "number" ? item.row : -1,
-      section: normalizeTokenSection(item.section) || inferTokenSection(y, x, imageSize),
-      label: getTokenLabel(item),
+      section,
+      label: getTokenLabel(item, section, text),
       bbox,
     };
 
@@ -180,7 +184,57 @@ function buildOcrMetadata(raw?: OcrRawResponse): OcrExtractionMetadata | undefin
   };
 }
 
-function getTokenLabel(item: NonNullable<OcrRawResponse["recognized_text"]>[number]) {
+function getTokenLabel(
+  item: NonNullable<OcrRawResponse["recognized_text"]>[number],
+  section: OcrTokenMetadata["section"],
+  text: string,
+) {
+  const rawLabel = getRawTokenLabel(item);
+
+  if (section === "HEADER") {
+    return "HEADER";
+  }
+
+  if (tableHeaderPattern.test(text)) {
+    return "Table Header";
+  }
+
+  if (vaccineTokenPattern.test(text)) {
+    return "VACCINE";
+  }
+
+  if (/feeding|bf\(\)|mixed\(\)|bot\(\)/i.test(text)) {
+    return "Feeding Type";
+  }
+
+  if (dateTokenPattern.test(text) && section === "TABLE_RECORDS") {
+    return "DATE";
+  }
+
+  if (/^\d+\s*(months?|mos?|years?|yrs?)$/i.test(text) && rawLabel === "Date of Birth") {
+    return "Age";
+  }
+
+  if (/^mother'?s name:?$/i.test(text)) {
+    return "Mother's Name";
+  }
+
+  if (/^father'?s name:?$/i.test(text)) {
+    return "Father's Name";
+  }
+
+  if (section === "PATIENT_INFORMATION" && rawLabel === "Danger Signs") {
+    return "Address";
+  }
+
+  if (section === "TABLE_RECORDS" && rawLabel === "EPI Status") {
+    return "VACCINE";
+  }
+
+  return rawLabel;
+}
+
+function getRawTokenLabel(item: NonNullable<OcrRawResponse["recognized_text"]>[number]) {
   if (typeof item.crf_label === "string" && item.crf_label.trim()) {
     return item.crf_label.trim();
   }

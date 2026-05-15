@@ -10,7 +10,7 @@ import type {
   VaccinationRecordDocument,
   VaccinationRecordStatus,
 } from "@/types/records";
-import type { ClinicRecordDraft } from "@/types/clinic-record";
+import type { ClinicRecordDraft, OcrExtractionMetadata, OcrTokenMetadata } from "@/types/clinic-record";
 import { adminDb } from "@/lib/firebase/admin";
 import { writeAuditLog } from "@/lib/firebase/audit-log";
 import { parseVaccinationText } from "@/lib/records/parser";
@@ -20,6 +20,9 @@ import { encryptRecordPayload, decryptRecordPayload } from "@/lib/security/recor
 import { formatAppDateTime } from "@/lib/utils/date-format";
 
 const recordsCollection = "vaccinationRecords";
+const vaccineTokenPattern = /\b(BCG|HEPA\s*B|HEPAB|HEP\s*B|DPT|DTP|OPV\d*|IPV|PCV|PENTA\w*|ROTA|AM|MCV|MMR)\b/i;
+const dateTokenPattern = /\b\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{2,4}\b/;
+const tableHeaderPattern = /^(date|wt|v\/s|episode|danger signs|other cc|management|\(diarrhea\)|\(ari\)|findings\s*\/?\s*chief complaint)$/i;
 
 export async function createSecureVaccinationRecord(
   input: NewVaccinationRecordInput,
@@ -217,6 +220,14 @@ export function mapSecureRecordDocument(id: string, data: DocumentData): Vaccina
       : [],
   } satisfies EncryptedRecordPayload;
   const parsed = parseVaccinationText(fallback.correctedText || fallback.rawText || "");
+  const ocrMetadata = normalizeStoredOcrMetadata(fallback.ocrMetadata);
+  const reviewedLabels = buildReviewedLabels(fallback.clinicRecord, fallback.correctedText || fallback.rawText || "");
+  const semanticChunks = buildSemanticChunks(
+    fallback.clinicRecord,
+    ocrMetadata,
+    fallback.correctedText || fallback.rawText || "",
+    reviewedLabels,
+  );
   const createdAt = toDate(data.createdAt);
   const updatedAt = toDate(data.updatedAt);
   const status = data.status === "Completed" ? "Completed" : "Pending Review";
@@ -236,9 +247,9 @@ export function mapSecureRecordDocument(id: string, data: DocumentData): Vaccina
     sourceFileType: fallback.sourceFileType || "",
     sourceStoragePath: fallback.sourceStoragePath || "",
     clinicRecord: fallback.clinicRecord,
-    ocrMetadata: fallback.ocrMetadata,
-    reviewedLabels: fallback.reviewedLabels || [],
-    semanticChunks: fallback.semanticChunks || [],
+    ocrMetadata,
+    reviewedLabels,
+    semanticChunks,
     semanticVector: fallback.semanticVector || [],
     semanticModel: fallback.semanticModel || "",
     searchKeywords: Array.isArray(data.searchKeywords)
@@ -249,6 +260,64 @@ export function mapSecureRecordDocument(id: string, data: DocumentData): Vaccina
     createdAt: createdAt || undefined,
     updatedAt: updatedAt || undefined,
   };
+}
+
+function normalizeStoredOcrMetadata(metadata?: OcrExtractionMetadata) {
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    ...metadata,
+    tokens: metadata.tokens.map((token) => ({
+      ...token,
+      label: normalizeStoredTokenLabel(token),
+    })),
+  };
+}
+
+function normalizeStoredTokenLabel(token: OcrTokenMetadata) {
+  if (token.section === "HEADER") {
+    return "HEADER";
+  }
+
+  if (tableHeaderPattern.test(token.text)) {
+    return "Table Header";
+  }
+
+  if (vaccineTokenPattern.test(token.text)) {
+    return "VACCINE";
+  }
+
+  if (/feeding|bf\(\)|mixed\(\)|bot\(\)/i.test(token.text)) {
+    return "Feeding Type";
+  }
+
+  if (dateTokenPattern.test(token.text) && token.section === "TABLE_RECORDS") {
+    return "DATE";
+  }
+
+  if (/^\d+\s*(months?|mos?|years?|yrs?)$/i.test(token.text) && token.label === "Date of Birth") {
+    return "Age";
+  }
+
+  if (/^mother'?s name:?$/i.test(token.text)) {
+    return "Mother's Name";
+  }
+
+  if (/^father'?s name:?$/i.test(token.text)) {
+    return "Father's Name";
+  }
+
+  if (token.section === "PATIENT_INFORMATION" && token.label === "Danger Signs") {
+    return "Address";
+  }
+
+  if (token.section === "TABLE_RECORDS" && token.label === "EPI Status") {
+    return "VACCINE";
+  }
+
+  return token.label;
 }
 
 function mapRecordListItem(document: VaccinationRecordDocument): VaccinationRecord {

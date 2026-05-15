@@ -25,8 +25,7 @@ export function parseVaccinationText(text: string): ParsedVaccinationText {
   ]) || "";
 
   // Year is stored separately so dashboard/search filters can group records without reparsing text.
-  const yearMatch = vaccinationDate.match(/\b(19|20)\d{2}\b/) || text.match(/\b(19|20)\d{2}\b/);
-  const recordYear = yearMatch?.[0] || "";
+  const recordYear = extractRecordYear(vaccinationDate) || extractRecordYear(text);
 
   return {
     patientName: normalizeDisplayValue(patientName),
@@ -50,6 +49,23 @@ function findValue(text: string, patterns: RegExp[]) {
 
 function normalizeDisplayValue(value: string) {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function extractRecordYear(value: string) {
+  const fourDigitYear = value.match(/\b(19|20)\d{2}\b/)?.[0];
+
+  if (fourDigitYear) {
+    return fourDigitYear;
+  }
+
+  const twoDigitDate = value.match(/\b\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*(\d{2})\b/);
+  const year = twoDigitDate ? Number(twoDigitDate[1]) : Number.NaN;
+
+  if (!Number.isFinite(year)) {
+    return "";
+  }
+
+  return String(year <= 49 ? 2000 + year : 1900 + year);
 }
 
 function buildSearchKeywords(values: string[]) {
