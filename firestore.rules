@@ -109,6 +109,7 @@ service cloud.firestore {
         "sourceStoragePath",
         "clinicRecord",
         "ocrMetadata",
+        "reviewedLabels",
         "semanticChunks",
         "semanticVector",
         "semanticModel",
@@ -167,6 +168,10 @@ service cloud.firestore {
           || validOcrMetadata(request.resource.data.ocrMetadata)
         )
         && (
+          !request.resource.data.keys().hasAny(["reviewedLabels"])
+          || request.resource.data.reviewedLabels is list
+        )
+        && (
           !request.resource.data.keys().hasAny(["semanticChunks"])
           || request.resource.data.semanticChunks is list
         )
@@ -196,6 +201,7 @@ service cloud.firestore {
           "correctedText",
           "status",
           "clinicRecord",
+          "reviewedLabels",
           "semanticChunks",
           "semanticVector",
           "semanticModel",
@@ -214,6 +220,10 @@ service cloud.firestore {
         && (
           !request.resource.data.keys().hasAny(["clinicRecord"])
           || validClinicRecord(request.resource.data.clinicRecord)
+        )
+        && (
+          !request.resource.data.keys().hasAny(["reviewedLabels"])
+          || request.resource.data.reviewedLabels is list
         )
         && (
           !request.resource.data.keys().hasAny(["semanticChunks"])

@@ -30,6 +30,7 @@ import {
   buildSemanticEmbeddingText,
   rankVaccinationRecordsWithBioBert,
 } from "@/lib/records/semantic-search";
+import { buildReviewedLabels } from "@/lib/records/reviewed-labels";
 
 const recordsCollection = "vaccinationRecords";
 
@@ -48,8 +49,9 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
 
   const correctedText = input.correctedText?.trim() || input.rawText.trim();
   const parsed = parseVaccinationText(correctedText);
-  const semanticChunks = buildSemanticChunks(input.clinicRecord, input.ocrMetadata, correctedText);
-  const semanticEmbeddingText = buildSemanticEmbeddingText(input.clinicRecord, input.ocrMetadata, correctedText);
+  const reviewedLabels = buildReviewedLabels(input.clinicRecord, correctedText);
+  const semanticChunks = buildSemanticChunks(input.clinicRecord, input.ocrMetadata, correctedText, reviewedLabels);
+  const semanticEmbeddingText = buildSemanticEmbeddingText(input.clinicRecord, input.ocrMetadata, correctedText, reviewedLabels);
   const bioBertEmbedding = await getBioBertEmbedding(semanticEmbeddingText);
 
   // Store both display fields and normalized/searchable fields for fast list rendering.
@@ -68,6 +70,7 @@ export async function createVaccinationRecord(input: NewVaccinationRecordInput) 
     sourceStoragePath: input.sourceStoragePath || "",
     clinicRecord: input.clinicRecord || null,
     ocrMetadata: input.ocrMetadata || null,
+    reviewedLabels,
     semanticChunks,
     searchKeywords: parsed.searchKeywords,
     createdBy: user.uid,
@@ -153,8 +156,9 @@ export async function updateVaccinationRecord(
   }
 
   const parsed = parseVaccinationText(correctedText);
-  const semanticChunks = buildSemanticChunks(updates.clinicRecord, undefined, correctedText);
-  const semanticEmbeddingText = buildSemanticEmbeddingText(updates.clinicRecord, undefined, correctedText);
+  const reviewedLabels = buildReviewedLabels(updates.clinicRecord, correctedText);
+  const semanticChunks = buildSemanticChunks(updates.clinicRecord, undefined, correctedText, reviewedLabels);
+  const semanticEmbeddingText = buildSemanticEmbeddingText(updates.clinicRecord, undefined, correctedText, reviewedLabels);
   const bioBertEmbedding = await getBioBertEmbedding(semanticEmbeddingText);
 
   // Re-parse edited OCR text so corrected values immediately update search and dashboards.
@@ -167,6 +171,7 @@ export async function updateVaccinationRecord(
     recordYear: parsed.recordYear,
     correctedText,
     status: updates.status || "Pending Review",
+    reviewedLabels,
     searchKeywords: parsed.searchKeywords,
     updatedAt: serverTimestamp(),
   };
@@ -227,6 +232,9 @@ function mapRecordDocument(id: string, data: Record<string, unknown>): Vaccinati
     ocrMetadata: isRecordObject(data.ocrMetadata)
       ? data.ocrMetadata as unknown as VaccinationRecordDocument["ocrMetadata"]
       : undefined,
+    reviewedLabels: Array.isArray(data.reviewedLabels)
+      ? data.reviewedLabels.filter(isRecordObject) as unknown as VaccinationRecordDocument["reviewedLabels"]
+      : [],
     semanticChunks: Array.isArray(data.semanticChunks)
       ? data.semanticChunks.filter((value): value is string => typeof value === "string")
       : [],

@@ -49,6 +49,15 @@ export interface OcrExtractionMetadata {
   tokens: OcrTokenMetadata[];
 }
 
+export interface ReviewedRecordLabel {
+  label: string;
+  displayLabel: string;
+  value: string;
+  field: string;
+  source: "clinicRecord" | "correctedText";
+  row?: number;
+}
+
 export interface OcrVisualization {
   mimeType: string;
   dataUrl: string;

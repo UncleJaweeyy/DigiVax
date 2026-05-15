@@ -1,8 +1,9 @@
-import type { OcrExtractionMetadata } from "@/types/clinic-record";
+import type { OcrExtractionMetadata, ReviewedRecordLabel } from "@/types/clinic-record";
 import type { VaccinationRecordDocument } from "@/types/records";
 import { getBioBertRankings } from "@/lib/records/biobert-client";
 import { getCrfLabelCounts, normalizeCrfLabel } from "@/lib/records/crf-labels";
 import { clinicRecordToText } from "@/lib/records/clinic-format";
+import { getReviewedLabelCounts } from "@/lib/records/reviewed-labels";
 
 export interface SemanticRecordMatch {
   record: VaccinationRecordDocument;
@@ -57,7 +58,7 @@ export function rankVaccinationRecords(
       const recordVector = buildRecordVector(record);
       const score = cosineSimilarity(queryVector, recordVector);
       const lexicalScore = getLexicalScore(record, queryText);
-      const matchedLabels = getMatchedLabels(record.ocrMetadata, queryVector);
+      const matchedLabels = getMatchedLabels(record, queryVector);
 
       return {
         record,
@@ -77,7 +78,12 @@ export async function rankVaccinationRecordsWithBioBert(
     queryText,
     records.map((record) => ({
       id: record.id,
-      text: buildSemanticEmbeddingText(record.clinicRecord, record.ocrMetadata, record.correctedText),
+      text: buildSemanticEmbeddingText(
+        record.clinicRecord,
+        record.ocrMetadata,
+        record.correctedText,
+        record.reviewedLabels,
+      ),
       embedding: record.semanticVector,
     })),
   );
@@ -114,6 +120,7 @@ export function buildSemanticChunks(
   clinicRecord: VaccinationRecordDocument["clinicRecord"] | undefined,
   metadata: OcrExtractionMetadata | undefined,
   correctedText = "",
+  reviewedLabels: ReviewedRecordLabel[] = [],
 ) {
   const chunks: string[] = [];
 
@@ -140,11 +147,18 @@ export function buildSemanticChunks(
     }
   }
 
+  const reviewedGroups = groupReviewedLabels(reviewedLabels);
+
+  for (const [label, values] of reviewedGroups.entries()) {
+    if (!values.length) continue;
+    chunks.push(`reviewed ${label.toLowerCase().replace(/_/g, " ")}: ${values.slice(0, 80).join(" ")}`);
+  }
+
   const labeledTokens = groupTokensByLabel(metadata);
 
   for (const [label, tokens] of labeledTokens.entries()) {
     if (!tokens.length) continue;
-    chunks.push(`${label.toLowerCase().replace(/_/g, " ")}: ${tokens.slice(0, 80).join(" ")}`);
+    chunks.push(`ocr predicted ${label.toLowerCase().replace(/_/g, " ")}: ${tokens.slice(0, 80).join(" ")}`);
   }
 
   if (!chunks.length && correctedText.trim()) {
@@ -158,8 +172,9 @@ export function buildSemanticEmbeddingText(
   clinicRecord: VaccinationRecordDocument["clinicRecord"] | undefined,
   metadata: OcrExtractionMetadata | undefined,
   correctedText = "",
+  reviewedLabels: ReviewedRecordLabel[] = [],
 ) {
-  return buildSemanticChunks(clinicRecord, metadata, correctedText).join("\n");
+  return buildSemanticChunks(clinicRecord, metadata, correctedText, reviewedLabels).join("\n");
 }
 
 function buildRecordVector(record: VaccinationRecordDocument) {
@@ -170,10 +185,21 @@ function buildRecordVector(record: VaccinationRecordDocument) {
     record.vaccinationDate,
     record.recordYear,
     record.correctedText,
+    ...(record.reviewedLabels || []).flatMap((item) => [item.label, item.displayLabel, item.field, item.value]),
     ...(record.semanticChunks || []),
   ];
 
   addVector(vector, buildWeightedVector(chunks.join(" "), 1));
+
+  for (const item of record.reviewedLabels || []) {
+    const label = normalizeCrfLabel(item.label);
+    const labelWeight = getLabelWeight(label) + 1.2;
+    addVector(vector, buildWeightedVector(`${label} ${item.displayLabel} ${item.field} ${item.value}`, labelWeight));
+  }
+
+  for (const count of getReviewedLabelCounts(record.reviewedLabels)) {
+    addVector(vector, buildWeightedVector(`reviewed ${count.label} ${count.displayLabel}`, Math.min(3.2, 1.5 + count.count / 8)));
+  }
 
   for (const token of record.ocrMetadata?.tokens || []) {
     const label = normalizeCrfLabel(token.label);
@@ -214,16 +240,30 @@ function getLexicalScore(record: VaccinationRecordDocument, queryText: string) {
     record.recordYear,
     record.status,
     record.correctedText,
+    ...(record.reviewedLabels || []).flatMap((item) => [item.label, item.displayLabel, item.field, item.value]),
     ...(record.searchKeywords || []),
   ].join(" ").toLowerCase();
 
   return haystack.includes(query) ? 0.45 : 0;
 }
 
-function getMatchedLabels(metadata: OcrExtractionMetadata | undefined, queryVector: Map<string, number>) {
+function getMatchedLabels(record: VaccinationRecordDocument, queryVector: Map<string, number>) {
   const matches = new Set<string>();
 
-  for (const token of metadata?.tokens || []) {
+  for (const item of record.reviewedLabels || []) {
+    const label = normalizeCrfLabel(item.label);
+    const terms = [
+      ...tokenize(item.value),
+      ...tokenize(item.field),
+      ...tokenize(label),
+    ];
+
+    if (terms.some((term) => queryVector.has(term))) {
+      matches.add(label);
+    }
+  }
+
+  for (const token of record.ocrMetadata?.tokens || []) {
     const tokenTerms = tokenize(token.text);
     const label = normalizeCrfLabel(token.label);
     const labelTerms = tokenize(label);
@@ -243,6 +283,19 @@ function groupTokensByLabel(metadata?: OcrExtractionMetadata) {
     const label = normalizeCrfLabel(token.label || token.section || "TEXT");
     const bucket = groups.get(label) || [];
     bucket.push(token.text);
+    groups.set(label, bucket);
+  }
+
+  return groups;
+}
+
+function groupReviewedLabels(labels: ReviewedRecordLabel[]) {
+  const groups = new Map<string, string[]>();
+
+  for (const item of labels) {
+    const label = normalizeCrfLabel(item.label);
+    const bucket = groups.get(label) || [];
+    bucket.push(item.value);
     groups.set(label, bucket);
   }
 

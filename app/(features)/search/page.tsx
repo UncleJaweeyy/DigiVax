@@ -38,6 +38,7 @@ import ClinicRecordSummary from "@/components/records/ClinicRecordSummary";
 import { clinicRecordFromText, clinicRecordToText, normalizeClinicRecordDraft } from "@/lib/records/clinic-format";
 import type { ClinicRecordDraft } from "@/types/clinic-record";
 import { getCrfLabelCounts, getCrfPredictionTotal } from "@/lib/records/crf-labels";
+import { getReviewedLabelCounts, getReviewedLabelTotal } from "@/lib/records/reviewed-labels";
 import { downloadStructuredRecordsPdf } from "@/lib/records/record-export";
 
 export default function SearchPage() {
@@ -401,7 +402,11 @@ export default function SearchPage() {
                 <RecordFact label="Vaccination Date" value={selectedRecord.vaccinationDate || "No date"} />
                 <RecordFact label="Record Year" value={selectedRecord.recordYear || "Unsorted"} />
                 <RecordStatusPanel status={selectedRecord.status} />
-                <CrfLabelSummary metadata={selectedRecord.ocrMetadata} compact />
+                <CrfLabelSummary
+                  metadata={selectedRecord.ocrMetadata}
+                  reviewedLabels={selectedRecord.reviewedLabels}
+                  compact
+                />
                 <RecordFact label="Uploaded By" value={selectedRecord.createdByName} />
                 <RecordFact label="Source File" value={selectedRecord.sourceFileName || "No file"} />
 
@@ -489,7 +494,10 @@ export default function SearchPage() {
                       </pre>
                     </div>
 
-                    <CrfLabelSummary metadata={selectedRecord.ocrMetadata} />
+                    <CrfLabelSummary
+                      metadata={selectedRecord.ocrMetadata}
+                      reviewedLabels={selectedRecord.reviewedLabels}
+                    />
                   </>
                 )}
               </section>
@@ -736,37 +744,75 @@ function SemanticMatchBadge({ record, query }: { record: VaccinationRecord; quer
 
 function CrfLabelSummary({
   metadata,
+  reviewedLabels,
   compact = false,
 }: {
   metadata?: VaccinationRecordDocument["ocrMetadata"];
+  reviewedLabels?: VaccinationRecordDocument["reviewedLabels"];
   compact?: boolean;
 }) {
   const counts = getCrfLabelCounts(metadata);
   const total = getCrfPredictionTotal(metadata);
+  const reviewedCounts = getReviewedLabelCounts(reviewedLabels);
+  const reviewedTotal = getReviewedLabelTotal(reviewedLabels);
 
   if (compact) {
     return (
-      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-        <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">CRF Predictions</p>
-        <div className="mt-2 flex items-center gap-2 text-sm font-black text-blue-900">
-          <BarChart3 size={18} />
-          {total} token{total === 1 ? "" : "s"}
+      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Reviewed Labels</p>
+        <div className="mt-2 flex items-center gap-2 text-sm font-black text-emerald-900">
+          <ClipboardList size={18} />
+          {reviewedTotal} final label{reviewedTotal === 1 ? "" : "s"}
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {counts.length ? counts.slice(0, 4).map((item) => (
-            <span key={item.label} className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-blue-700">
+          {reviewedCounts.length ? reviewedCounts.slice(0, 4).map((item) => (
+            <span key={item.label} className="rounded-full bg-white px-2 py-1 text-[10px] font-bold text-emerald-700">
               {item.displayLabel}: {item.count}
             </span>
           )) : (
-            <span className="text-xs font-semibold text-blue-700">No CRF labels saved</span>
+            <span className="text-xs font-semibold text-emerald-700">No reviewed labels saved</span>
           )}
         </div>
+        <p className="mt-3 text-[11px] font-semibold text-emerald-700">
+          {total} OCR/CRF prediction{total === 1 ? "" : "s"} kept as source metadata
+        </p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-400">
+          Reviewed Label Counts
+        </h3>
+        {reviewedCounts.length ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-black uppercase tracking-widest text-slate-400">
+                <tr>
+                  <th className="px-4 py-3">Label / Category</th>
+                  <th className="px-4 py-3">Final Values</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviewedCounts.map((item) => (
+                  <tr key={item.label} className="border-t border-slate-100">
+                    <td className="px-4 py-3 font-bold text-slate-800">{item.displayLabel}</td>
+                    <td className="px-4 py-3 font-mono text-slate-600">{item.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 text-sm font-semibold text-slate-400">
+            No reviewed labels were generated for this record.
+          </div>
+        )}
+      </div>
+
+      <div>
       <h3 className="mb-3 text-sm font-black uppercase tracking-widest text-slate-400">
         CRF Label Prediction Counts
       </h3>
@@ -794,6 +840,7 @@ function CrfLabelSummary({
           No CRF token labels were saved for this record.
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -812,6 +859,7 @@ function CompiledRecordsModal({
   onOpenRecord: (recordId: string) => void;
 }) {
   const totalPredictions = records.reduce((sum, record) => sum + getCrfPredictionTotal(record.ocrMetadata), 0);
+  const totalReviewedLabels = records.reduce((sum, record) => sum + getReviewedLabelTotal(record.reviewedLabels), 0);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
@@ -821,7 +869,7 @@ function CompiledRecordsModal({
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">Compiled Digitalized Forms</p>
             <h2 className="mt-1 text-2xl font-bold text-slate-900">All Structured Records</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              {records.length} record{records.length === 1 ? "" : "s"} compiled, {totalPredictions} CRF prediction{totalPredictions === 1 ? "" : "s"}
+              {records.length} record{records.length === 1 ? "" : "s"} compiled, {totalReviewedLabels} reviewed label{totalReviewedLabels === 1 ? "" : "s"}, {totalPredictions} CRF prediction{totalPredictions === 1 ? "" : "s"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -847,6 +895,7 @@ function CompiledRecordsModal({
                   <th className="px-4 py-3">Vaccine</th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Reviewed Labels</th>
                   <th className="px-4 py-3">CRF Predictions</th>
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
@@ -858,6 +907,7 @@ function CompiledRecordsModal({
                     <td className="px-4 py-3 text-slate-600">{record.vaccineType}</td>
                     <td className="px-4 py-3 text-slate-600">{record.vaccinationDate || "No date"}</td>
                     <td className="px-4 py-3"><RecordStatusBadge status={record.status} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-600">{getReviewedLabelTotal(record.reviewedLabels)}</td>
                     <td className="px-4 py-3 font-mono text-slate-600">{getCrfPredictionTotal(record.ocrMetadata)}</td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -884,7 +934,8 @@ function CompiledRecordsModal({
                   <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
                     <span>{record.vaccineType}</span>
                     <span>{record.vaccinationDate || "No date"}</span>
-                    <span>{getCrfPredictionTotal(record.ocrMetadata)} CRF labels</span>
+                    <span>{getReviewedLabelTotal(record.reviewedLabels)} reviewed labels</span>
+                    <span>{getCrfPredictionTotal(record.ocrMetadata)} CRF predictions</span>
                   </div>
                 </div>
                 <div className="p-4">
