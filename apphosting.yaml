@@ -32,3 +32,18 @@ env:
     secret: digivaxBioBertApiKey
     availability:
       - RUNTIME
+
+  - variable: DIGIVAX_RECORD_ENCRYPTION_KEY
+    secret: digivaxRecordEncryptionKey
+    availability:
+      - RUNTIME
+
+  - variable: DIGIVAX_RECORD_ENCRYPTION_KEY_ID
+    value: record-key-v1
+    availability:
+      - RUNTIME
+
+  - variable: DIGIVAX_ENABLE_DEV_DECRYPT_VIEW
+    value: "true"
+    availability:
+      - RUNTIME

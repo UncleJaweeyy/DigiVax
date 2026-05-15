@@ -10,7 +10,8 @@ import {
   Users, 
   ShieldAlert, 
   LogOut,
-  Activity
+  Activity,
+  Eye
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -82,6 +83,12 @@ export default function Sidebar() {
               icon={<ShieldAlert size={20} />} 
               label="System Logs" 
               active={isActive("/admin/logs")} 
+            />
+            <SidebarLink
+              href="/admin/dev-decrypt"
+              icon={<Eye size={20} />}
+              label="Dev Decrypt"
+              active={isActive("/admin/dev-decrypt")}
             />
           </div>
         )}
