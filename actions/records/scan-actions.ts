@@ -3,6 +3,7 @@
 "use server";
 
 import { MOCK_EXTRACTED_TEXT } from "@/lib/records/mock-data";
+import { isLikelyVaccineTerm } from "@/lib/records/vaccines";
 import type {
   ClinicRecordDraft,
   OcrExtractionMetadata,
@@ -57,7 +58,6 @@ const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"]
 const useMockOcr = process.env.OCR_USE_MOCK === "true";
 const ocrApiUrl = process.env.OCR_API_URL;
 const ocrApiKey = process.env.OCR_API_KEY;
-const vaccineTokenPattern = /\b(BCG|HEPA\s*B|HEPAB|HEP\s*B|DPT|DTP|OPV\d*|IPV|PCV|PENTA\w*|ROTA|AM|MCV|MMR)\b/i;
 const dateTokenPattern = /\b\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{2,4}\b/;
 const tableHeaderPattern = /^(date|wt|v\/s|episode|danger signs|other cc|management|\(diarrhea\)|\(ari\)|findings\s*\/?\s*chief complaint)$/i;
 
@@ -199,7 +199,7 @@ function getTokenLabel(
     return "Table Header";
   }
 
-  if (vaccineTokenPattern.test(text)) {
+  if (isLikelyVaccineTerm(text)) {
     return "VACCINE";
   }
 

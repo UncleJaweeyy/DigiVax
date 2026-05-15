@@ -4,6 +4,12 @@ import { Plus, Save, Trash2, X } from "lucide-react";
 
 import Button from "@/components/ui/Button";
 import { emptyVisitRow } from "@/lib/records/clinic-format";
+import {
+  getCustomVaccineText,
+  knownVaccineOptions,
+  mergeCustomVaccines,
+  mergeKnownVaccineSelection,
+} from "@/lib/records/vaccines";
 import type { ClinicPatientDetails, ClinicRecordDraft, ClinicVisitRow, OcrVisualization } from "@/types/clinic-record";
 
 interface ClinicRecordReviewModalProps {
@@ -29,7 +35,6 @@ const visitFields: Array<{ key: keyof Omit<ClinicVisitRow, "id">; label: string;
 ];
 
 const epiStatusOptions = ["Complete", "Incomplete"];
-const vaccineOptions = ["BCG", "DPT", "OPV", "Hepa B", "AM"];
 const feedingOptions = ["BF", "Mixed", "Bot"];
 
 interface ClinicFieldProps {
@@ -115,13 +120,16 @@ export default function ClinicRecordReviewModal({
   };
 
   const toggleVaccine = (value: string, checked: boolean) => {
-    const nextVaccines = checked
-      ? Array.from(new Set([...draft.vaccines, value]))
-      : draft.vaccines.filter((item) => item !== value);
-
     onChange({
       ...draft,
-      vaccines: nextVaccines,
+      vaccines: mergeKnownVaccineSelection(draft.vaccines, value, checked),
+    });
+  };
+
+  const updateCustomVaccines = (value: string) => {
+    onChange({
+      ...draft,
+      vaccines: mergeCustomVaccines(draft.vaccines, value),
     });
   };
 
@@ -214,7 +222,7 @@ export default function ClinicRecordReviewModal({
                     <div className="grid grid-cols-[8.5rem_1fr] gap-2">
                       <span className="text-xs font-bold uppercase tracking-wide text-slate-500">EPI / Vaccines</span>
                       <div className="grid grid-cols-3 gap-x-5 gap-y-2">
-                        {vaccineOptions.map((option) => (
+                        {knownVaccineOptions.map((option) => (
                           <CheckOption
                             key={option}
                             label={option}
@@ -224,6 +232,12 @@ export default function ClinicRecordReviewModal({
                         ))}
                       </div>
                     </div>
+
+                    <ClinicField
+                      label="Other Vaccines"
+                      value={getCustomVaccineText(draft.vaccines)}
+                      onChange={updateCustomVaccines}
+                    />
 
                     <div className="grid grid-cols-[8.5rem_1fr] gap-2">
                       <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Type of Feeding</span>

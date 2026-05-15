@@ -1,4 +1,5 @@
 import type { ClinicRecordDraft, ClinicVisitRow } from "@/types/clinic-record";
+import { isLikelyVaccineTerm, splitVaccineText } from "@/lib/records/vaccines";
 
 export function emptyClinicRecordDraft(): ClinicRecordDraft {
   return {
@@ -87,7 +88,7 @@ export function clinicRecordFromText(text: string): ClinicRecordDraft {
   draft.patient.birthWeight = findLineValue(text, "Birth Weight");
   draft.patient.epiStatus = findLineValue(text, "EPI Status");
   draft.patient.feedingType = findLineValue(text, "Type of Feeding");
-  draft.vaccines = splitVaccines(findLineValue(text, "Vaccine Type"));
+  draft.vaccines = splitVaccineText(findLineValue(text, "Vaccine Type"));
   draft.visits = parseVisitRows(text);
   return draft;
 }
@@ -108,13 +109,6 @@ export function emptyVisitRow(index = Date.now()): ClinicVisitRow {
 function findLineValue(text: string, label: string) {
   const pattern = new RegExp(`^${escapeRegExp(label)}\\s*:\\s*(.+)$`, "im");
   return text.match(pattern)?.[1]?.trim() || "";
-}
-
-function splitVaccines(value: string) {
-  return value
-    .split(/[,;\n]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function parseVisitRows(text: string) {
@@ -153,8 +147,8 @@ function collectVisitVaccines(visits: ClinicVisitRow[]) {
   return Array.from(
     new Set(
       visits
-        .flatMap((visit) => visit.otherCc.split(/\s+|,|;/))
-        .map((item) => item.trim())
+        .flatMap((visit) => splitVaccineText(visit.otherCc))
+        .filter(isLikelyVaccineTerm)
         .filter(Boolean),
     ),
   ).join(", ");

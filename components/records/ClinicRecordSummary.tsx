@@ -3,6 +3,12 @@
 import { Plus, Trash2 } from "lucide-react";
 
 import { emptyVisitRow } from "@/lib/records/clinic-format";
+import {
+  getCustomVaccineText,
+  knownVaccineOptions,
+  mergeCustomVaccines,
+  mergeKnownVaccineSelection,
+} from "@/lib/records/vaccines";
 import type { ClinicPatientDetails, ClinicRecordDraft, ClinicVisitRow } from "@/types/clinic-record";
 
 const visitFields: Array<{
@@ -22,7 +28,6 @@ const visitFields: Array<{
 ];
 
 const epiStatusOptions = ["Complete", "Incomplete"];
-const vaccineOptions = ["BCG", "DPT", "OPV", "Hepa B", "AM"];
 const feedingOptions = ["BF", "Mixed", "Bot"];
 
 interface ClinicRecordSummaryProps {
@@ -67,9 +72,14 @@ export default function ClinicRecordSummary({ record, isEditing = false, onChang
   const toggleVaccine = (value: string, checked: boolean) => {
     onChange?.({
       ...record,
-      vaccines: checked
-        ? Array.from(new Set([...record.vaccines, value]))
-        : record.vaccines.filter((item) => item !== value),
+      vaccines: mergeKnownVaccineSelection(record.vaccines, value, checked),
+    });
+  };
+
+  const updateCustomVaccines = (value: string) => {
+    onChange?.({
+      ...record,
+      vaccines: mergeCustomVaccines(record.vaccines, value),
     });
   };
 
@@ -111,11 +121,17 @@ export default function ClinicRecordSummary({ record, isEditing = false, onChang
             />
             <SummaryCheckGroup
               label="EPI / Vaccines"
-              options={vaccineOptions}
+              options={knownVaccineOptions}
               isChecked={(option) => record.vaccines.includes(option)}
               isEditing={isEditing}
               onChange={toggleVaccine}
               columns
+            />
+            <SummaryField
+              label="Other Vaccines"
+              value={getCustomVaccineText(record.vaccines)}
+              isEditing={isEditing}
+              onChange={updateCustomVaccines}
             />
             <SummaryCheckGroup
               label="Type of Feeding"

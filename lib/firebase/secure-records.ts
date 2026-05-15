@@ -16,11 +16,11 @@ import { writeAuditLog } from "@/lib/firebase/audit-log";
 import { parseVaccinationText } from "@/lib/records/parser";
 import { buildReviewedLabels } from "@/lib/records/reviewed-labels";
 import { buildSemanticChunks, rankVaccinationRecords } from "@/lib/records/semantic-search";
+import { isLikelyVaccineTerm } from "@/lib/records/vaccines";
 import { encryptRecordPayload, decryptRecordPayload } from "@/lib/security/record-crypto";
 import { formatAppDateTime } from "@/lib/utils/date-format";
 
 const recordsCollection = "vaccinationRecords";
-const vaccineTokenPattern = /\b(BCG|HEPA\s*B|HEPAB|HEP\s*B|DPT|DTP|OPV\d*|IPV|PCV|PENTA\w*|ROTA|AM|MCV|MMR)\b/i;
 const dateTokenPattern = /\b\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{2,4}\b/;
 const tableHeaderPattern = /^(date|wt|v\/s|episode|danger signs|other cc|management|\(diarrhea\)|\(ari\)|findings\s*\/?\s*chief complaint)$/i;
 
@@ -285,7 +285,7 @@ function normalizeStoredTokenLabel(token: OcrTokenMetadata) {
     return "Table Header";
   }
 
-  if (vaccineTokenPattern.test(token.text)) {
+  if (isLikelyVaccineTerm(token.text)) {
     return "VACCINE";
   }
 

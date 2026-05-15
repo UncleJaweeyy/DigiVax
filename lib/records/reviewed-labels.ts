@@ -1,7 +1,6 @@
 import type { ClinicRecordDraft, ReviewedRecordLabel } from "@/types/clinic-record";
 import { getCrfLabelDisplayName, normalizeCrfLabel } from "@/lib/records/crf-labels";
-
-const vaccinePattern = /\b(BCG|HEPA\s*B|HEPAB|HEP\s*B|DPT|DTP|OPV\d*|IPV|PCV|PENTA\w*|ROTA|AM|MCV|MMR)\b/i;
+import { isLikelyVaccineTerm, normalizeVaccineName } from "@/lib/records/vaccines";
 
 const textLineLabels: Array<{ pattern: RegExp; label: string; field: string }> = [
   { pattern: /^name\s*:/i, label: "PATIENT_INFORMATION", field: "Name" },
@@ -84,8 +83,8 @@ function buildClinicRecordLabels(record: ClinicRecordDraft) {
 
 function addVisitOtherCcLabels(labels: ReviewedRecordLabel[], value: string, row: number) {
   const parts = splitClinicalList(value);
-  const vaccines = parts.filter(isVaccineLike);
-  const findings = parts.filter((part) => !isVaccineLike(part));
+  const vaccines = parts.filter(isLikelyVaccineTerm);
+  const findings = parts.filter((part) => !isLikelyVaccineTerm(part));
 
   for (const vaccine of vaccines) {
     add(labels, "VACCINE", "Visit Vaccine", normalizeVaccineName(vaccine), row);
@@ -101,20 +100,6 @@ function splitClinicalList(value: string) {
     .split(/\s*(?:\/|,|;|\n)\s*/g)
     .map((item) => item.replace(/\s+/g, " ").trim())
     .filter(Boolean);
-}
-
-function isVaccineLike(value: string) {
-  return vaccinePattern.test(value);
-}
-
-function normalizeVaccineName(value: string) {
-  return value
-    .replace(/\bHEPA\s*B\b/i, "Hepa B")
-    .replace(/\bHEP\s*B\b/i, "Hepa B")
-    .replace(/\bHEPAB\b/i, "Hepa B")
-    .replace(/\bPENTAT\b/i, "Penta")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function normalizeCheckedStatus(value: string) {
