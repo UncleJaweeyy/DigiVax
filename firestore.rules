@@ -258,8 +258,7 @@ service cloud.firestore {
 
     match /vaccinationRecords/{recordId} {
       allow read: if hasStaffRole();
-      allow create: if hasStaffRole() && validRecordDocument();
-      allow update: if hasStaffRole() && validRecordReviewUpdate();
+      allow create, update: if false;
       allow delete: if isAdmin();
     }
   }

@@ -6,6 +6,7 @@ import { formatAppDateTime } from "@/lib/utils/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertAdmin } from "@/lib/firebase/admin-access";
 import { mapAuditLog, writeAuditLog } from "@/lib/firebase/audit-log";
+import { mapSecureRecordDocument } from "@/lib/firebase/secure-records";
 
 interface AdminSummaryLog {
   id: string;
@@ -56,7 +57,7 @@ export const getAdminDashboardOverview = async (
   const pendingUsers = users.filter((user) => user.status === "Pending").length;
   const pendingRecords = pendingRecordsSnapshot.data().count;
   const sourceFiles = records.filter(
-    (record) => typeof record.data.sourceStoragePath === "string" && record.data.sourceStoragePath,
+    (record) => Boolean(mapSecureRecordDocument(record.id, record.data).sourceStoragePath),
   ).length;
 
   return {
@@ -102,7 +103,7 @@ export const getAdminDashboardOverview = async (
       : records.slice(0, 5).map((record) => ({
           id: record.id,
           primary: getString(record.data.createdByName, "Staff"),
-          secondary: `Digitized ${getString(record.data.patientName, "record")}`,
+          secondary: `Digitized record ${record.id}`,
           status: record.data.status === "Completed" ? "success" : "warning",
           time: formatDateTime(record.data.createdAt),
         })),
@@ -118,22 +119,22 @@ export const exportAllRecords = async (idToken: string) => {
     adminDb.collection(usersCollection).doc(uid).get(),
   ]);
   const rows = recordsSnapshot.docs.map((doc) => {
-    const data = doc.data();
+    const data = mapSecureRecordDocument(doc.id, doc.data());
 
     return [
       doc.id,
-      getString(data.patientName),
-      getString(data.vaccineType),
-      getString(data.vaccinationDate),
-      getString(data.recordYear),
-      getString(data.status),
+      data.patientName,
+      data.vaccineType,
+      data.vaccinationDate,
+      data.recordYear,
+      data.status,
       getString(data.createdByName, "Staff"),
       formatDateTime(data.createdAt),
       formatDateTime(data.updatedAt),
-      getString(data.sourceFileName),
-      getString(data.sourceStoragePath),
-      getString(data.rawText),
-      getString(data.correctedText),
+      data.sourceFileName || "",
+      data.sourceStoragePath || "",
+      data.rawText,
+      data.correctedText,
     ];
   });
   const csv = [exportColumns, ...rows].map((row) => row.map(escapeCsvValue).join(",")).join("\r\n");
@@ -243,6 +244,10 @@ function getActorName(profile: DocumentData | undefined) {
 }
 
 function toDate(value: unknown) {
+  if (value instanceof Date) {
+    return value;
+  }
+
   if (value && typeof (value as { toDate?: unknown }).toDate === "function") {
     return (value as { toDate: () => Date }).toDate();
   }

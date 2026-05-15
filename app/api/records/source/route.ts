@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 
-import { adminAuth, adminDb, adminStorage } from "@/lib/firebase/admin";
-
-const recordsCollection = "vaccinationRecords";
-const usersCollection = "users";
+import { adminStorage } from "@/lib/firebase/admin";
+import { assertActiveStaffProfile } from "@/lib/firebase/admin-access";
+import { writeAuditLog } from "@/lib/firebase/audit-log";
+import { getSecureVaccinationRecord } from "@/lib/firebase/secure-records";
+import { decryptBytes } from "@/lib/security/record-crypto";
 
 export async function GET(request: NextRequest) {
   try {
-    await assertActiveStaff(request);
+    const staff = await assertActiveStaffProfile(getBearerToken(request));
 
     const recordId = request.nextUrl.searchParams.get("recordId");
 
@@ -15,14 +16,8 @@ export async function GET(request: NextRequest) {
       return errorResponse("Missing record ID.", 400);
     }
 
-    const recordSnapshot = await adminDb.collection(recordsCollection).doc(recordId).get();
-
-    if (!recordSnapshot.exists) {
-      return errorResponse("Record not found.", 404);
-    }
-
-    const record = recordSnapshot.data();
-    const storagePath = typeof record?.sourceStoragePath === "string" ? record.sourceStoragePath : "";
+    const record = await getSecureVaccinationRecord(recordId);
+    const storagePath = record.sourceStoragePath || "";
 
     if (!storagePath) {
       return errorResponse("This record does not have an uploaded source file.", 404);
@@ -36,14 +31,25 @@ export async function GET(request: NextRequest) {
     }
 
     const [[metadata], [buffer]] = await Promise.all([file.getMetadata(), file.download()]);
-    const contentType = metadata.contentType || "application/octet-stream";
+    const customMetadata = normalizeMetadata(metadata.metadata);
+    const decryptedBuffer = decryptBytes(buffer, customMetadata);
+    const contentType = String(customMetadata.originalContentType || record.sourceFileType || metadata.contentType || "application/octet-stream");
     const fileName = sanitizeFileName(
-      typeof record?.sourceFileName === "string" && record.sourceFileName
+      record.sourceFileName
         ? record.sourceFileName
         : storagePath.split("/").pop() || "source-file",
     );
 
-    return new Response(new Uint8Array(buffer), {
+    await writeAuditLog({
+      userId: staff.uid,
+      user: staff.name,
+      action: "Source File Viewed",
+      target: `Record ${recordId}`,
+      targetId: recordId,
+      status: "success",
+    });
+
+    return new Response(new Uint8Array(decryptedBuffer), {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `inline; filename="${fileName}"`,
@@ -51,34 +57,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Source file proxy error:", error);
+    console.error("Source file proxy error");
     return errorResponse(error instanceof Error ? error.message : "Unable to open source file.", 403);
   }
-}
-
-async function assertActiveStaff(request: NextRequest) {
-  const token = getBearerToken(request);
-
-  if (!token) {
-    throw new Error("Please sign in again before opening this file.");
-  }
-
-  const decodedToken = await adminAuth.verifyIdToken(token);
-  const profileSnapshot = await adminDb.collection(usersCollection).doc(decodedToken.uid).get();
-
-  if (!profileSnapshot.exists) {
-    throw new Error("Your account does not have a DigiVax profile.");
-  }
-
-  const profile = profileSnapshot.data();
-  const role = String(profile?.role || "").toLowerCase();
-  const status = String(profile?.status || "").toLowerCase();
-
-  if (status !== "active" || !["admin", "bhw"].includes(role)) {
-    throw new Error("Your account is not allowed to open source files.");
-  }
-
-  return decodedToken.uid;
 }
 
 function getBearerToken(request: NextRequest) {
@@ -94,4 +75,14 @@ function errorResponse(message: string, status: number) {
 
 function sanitizeFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function normalizeMetadata(metadata: Record<string, string | number | boolean | null> | undefined) {
+  const normalized: Record<string, string | undefined> = {};
+
+  for (const [key, value] of Object.entries(metadata || {})) {
+    normalized[key] = typeof value === "string" ? value : undefined;
+  }
+
+  return normalized;
 }

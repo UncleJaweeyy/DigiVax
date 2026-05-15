@@ -56,13 +56,11 @@ export async function getSystemLogs(
 }
 
 function mapRecordLog(id: string, data: DocumentData): SystemLog {
-  const patientName = getString(data.patientName, "Unknown Patient");
-
   return {
     id: `REC-${id}`,
     user: getString(data.createdByName, "Staff"),
     action: data.status === "Completed" ? "Review Completed" : "Digitalized Record",
-    target: patientName,
+    target: `Record ${id}`,
     timestamp: formatDateTime(data.createdAt),
     status: data.status === "Completed" ? "success" : "warning",
   };

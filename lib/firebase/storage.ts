@@ -1,6 +1,4 @@
-import { ref, uploadBytes } from "firebase/storage";
-
-import { auth, storage } from "@/lib/firebase/client";
+import { auth } from "@/lib/firebase/client";
 
 const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
 const maxUploadBytes = 10 * 1024 * 1024;
@@ -23,28 +21,32 @@ export async function uploadVaccinationRecordFile(file: File) {
   }
 
   const uploadFile = await compressImageForStorage(file);
-  const safeName = uploadFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `vaccination-records/${user.uid}/${Date.now()}-${safeName}`;
-  const storageRef = ref(storage, storagePath);
+  const token = await user.getIdToken();
+  const formData = new FormData();
+  formData.append("file", uploadFile, uploadFile.name);
 
-  await uploadBytes(storageRef, uploadFile, {
-    contentType: uploadFile.type,
-    customMetadata: {
-      uploadedBy: user.uid,
-      originalName: file.name,
-      originalSize: String(file.size),
-      storedSize: String(uploadFile.size),
-      compressed: String(uploadFile.size < file.size),
+  const response = await fetch("/api/records/source/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
+    body: formData,
   });
 
-  return {
-    storagePath,
-    fileName: uploadFile.name,
-    contentType: uploadFile.type,
-    originalSize: file.size,
-    storedSize: uploadFile.size,
+  const payload = await response.json().catch(() => ({})) as {
+    storagePath?: string;
+    fileName?: string;
+    contentType?: string;
+    originalSize?: number;
+    storedSize?: number;
+    error?: string;
   };
+
+  if (!response.ok || !payload.storagePath) {
+    throw new Error(payload.error || "Unable to upload source file.");
+  }
+
+  return payload;
 }
 
 async function compressImageForStorage(file: File) {

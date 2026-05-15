@@ -2,9 +2,10 @@
 
 import type { DashboardStat } from "@/types/dashboard";
 import type { VaccinationRecord } from "@/types/records";
-import { formatAppDateTime } from "@/lib/utils/date-format";
 import { adminDb } from "@/lib/firebase/admin";
 import { assertActiveStaff } from "@/lib/firebase/admin-access";
+import { mapSecureRecordDocument } from "@/lib/firebase/secure-records";
+import { formatAppDateTime } from "@/lib/utils/date-format";
 
 const recordsCollection = "vaccinationRecords";
 
@@ -20,21 +21,21 @@ export const getBHWDashboardOverview = async (
     .get();
 
   const records = snapshot.docs.map((doc) => {
-    const data = doc.data();
+    const data = mapSecureRecordDocument(doc.id, doc.data());
 
     return {
       id: doc.id,
-      patientName: getString(data.patientName, "Unknown Patient"),
-      vaccineType: getString(data.vaccineType, "Unspecified Vaccine"),
+      patientName: data.patientName,
+      vaccineType: data.vaccineType,
       timestamp: formatDateTime(data.createdAt),
-      status: data.status === "Completed" ? "Completed" : "Pending Review",
+      status: data.status,
     } satisfies VaccinationRecord;
   });
 
   const uniquePatients = new Set(
     snapshot.docs
-      .map((doc) => doc.data())
-      .map((data) => getString(data.patientNameLower) || getString(data.patientName).toLowerCase())
+      .map((doc) => mapSecureRecordDocument(doc.id, doc.data()))
+      .map((data) => data.patientNameLower || data.patientName.toLowerCase())
       .filter(Boolean),
   );
   const pendingCount = records.filter((record) => record.status === "Pending Review").length;
@@ -64,10 +65,6 @@ export const getBHWDashboardOverview = async (
   };
 };
 
-function getString(value: unknown, fallback = "") {
-  return typeof value === "string" && value.trim() ? value : fallback;
-}
-
 function formatDateTime(value: unknown) {
   const date = toDate(value);
 
@@ -79,6 +76,10 @@ function formatDateTime(value: unknown) {
 }
 
 function toDate(value: unknown) {
+  if (value instanceof Date) {
+    return value;
+  }
+
   if (value && typeof (value as { toDate?: unknown }).toDate === "function") {
     return (value as { toDate: () => Date }).toDate();
   }

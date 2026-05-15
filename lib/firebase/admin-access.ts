@@ -17,6 +17,22 @@ export async function assertActiveStaff(idToken: string) {
   return uid;
 }
 
+export async function assertActiveStaffProfile(idToken: string) {
+  const { uid, profile } = await getVerifiedProfile(idToken);
+  const role = String(profile?.role || "").toLowerCase();
+  const status = String(profile?.status || "");
+
+  if (status !== "Active" || !["admin", "bhw"].includes(role)) {
+    throw new Error("Active staff access is required.");
+  }
+
+  return {
+    uid,
+    name: String(profile?.name || profile?.email || "Staff"),
+    role,
+  };
+}
+
 export async function assertAdmin(idToken: string) {
   const { uid, profile } = await getVerifiedProfile(idToken);
   const role = String(profile?.role || "").toLowerCase();

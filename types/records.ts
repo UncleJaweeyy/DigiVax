@@ -39,6 +39,29 @@ export interface VaccinationRecordDocument {
   updatedAt?: Date;
 }
 
+export interface EncryptedRecordPayload {
+  rawText: string;
+  correctedText: string;
+  clinicRecord?: ClinicRecordDraft;
+  ocrMetadata?: OcrExtractionMetadata;
+  reviewedLabels?: ReviewedRecordLabel[];
+  semanticChunks?: string[];
+  semanticVector?: number[];
+  semanticModel?: string;
+  sourceFileName?: string;
+  sourceFileType?: string;
+  sourceStoragePath?: string;
+}
+
+export interface EncryptedDocumentField {
+  alg: "AES-256-GCM";
+  kid: string;
+  iv: string;
+  ciphertext: string;
+  tag: string;
+  encryptedAt: string;
+}
+
 export interface NewVaccinationRecordInput {
   rawText: string;
   correctedText?: string;

@@ -21,8 +21,8 @@ service firebase.storage {
     }
 
     match /vaccination-records/{userId}/{fileName=**} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && validRecordFile();
+      allow read: if false;
+      allow create: if false;
       allow update, delete: if false;
     }
   }

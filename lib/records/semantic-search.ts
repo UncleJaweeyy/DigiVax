@@ -1,6 +1,5 @@
 import type { OcrExtractionMetadata, ReviewedRecordLabel } from "@/types/clinic-record";
 import type { VaccinationRecordDocument } from "@/types/records";
-import { getBioBertRankings } from "@/lib/records/biobert-client";
 import { getCrfLabelCounts, normalizeCrfLabel } from "@/lib/records/crf-labels";
 import { clinicRecordToText } from "@/lib/records/clinic-format";
 import { getReviewedLabelCounts } from "@/lib/records/reviewed-labels";
@@ -74,6 +73,7 @@ export async function rankVaccinationRecordsWithBioBert(
   records: VaccinationRecordDocument[],
   queryText: string,
 ): Promise<SemanticRecordMatch[]> {
+  const { getBioBertRankings } = await import("@/lib/records/biobert-client");
   const bioBertResults = await getBioBertRankings(
     queryText,
     records.map((record) => ({
