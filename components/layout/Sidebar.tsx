@@ -84,12 +84,12 @@ export default function Sidebar() {
               label="System Logs" 
               active={isActive("/admin/logs")} 
             />
-            <SidebarLink
+           {/* <SidebarLink
               href="/admin/dev-decrypt"
               icon={<Eye size={20} />}
               label="Dev Decrypt"
               active={isActive("/admin/dev-decrypt")}
-            />
+            />*/}
           </div>
         )}
       </nav>
