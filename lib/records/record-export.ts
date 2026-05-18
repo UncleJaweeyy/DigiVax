@@ -9,7 +9,10 @@ type PdfDocument = jsPDF & {
     finalY?: number;
   };
 };
+
 type AutoTable = (doc: jsPDF, options: UserOptions) => void;
+
+const contentStartY = 132;
 
 export async function downloadStructuredRecordsPdf(
   records: VaccinationRecordDocument[],
@@ -36,26 +39,16 @@ export async function downloadStructuredRecordsPdf(
     creator: "DigiVax",
   });
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("City Government of Legzpi", pageWidth / 2, 34, { align: "center" });
-  doc.setFontSize(12);
-  doc.text("CITY HEALTH DEPARTMENT", pageWidth / 2, 50, { align: "center" });
-  doc.setFontSize(11);
-  doc.text("Legapi City", pageWidth / 2, 66, { align: "center" });
+  renderPdfHeader(doc, pageWidth);
+  const contentStartY = 132;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Under Five Clinic Record", pageWidth / 2, 88, { align: "center" });
-  doc.setFontSize(9);
-  doc.text("(Philhealth and Non-Philhealth)", pageWidth / 2, 102, { align: "center" });
-
-  let cursorY = 132;
+  let cursorY = contentStartY;
 
   records.forEach((record, index) => {
     if (index > 0) {
       doc.addPage();
-      cursorY = margin;
+      renderPdfHeader(doc, pageWidth);
+      cursorY = contentStartY;
     }
 
     cursorY = renderRecord(autoTable, doc, record, cursorY, margin, pageWidth, pageHeight);
@@ -74,6 +67,22 @@ export async function downloadStructuredRecordsPdf(
   }
 
   doc.save(filename);
+}
+
+function renderPdfHeader(doc: PdfDocument, pageWidth: number) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("City Government of Legzpi", pageWidth / 2, 34, { align: "center" });
+  doc.setFontSize(12);
+  doc.text("CITY HEALTH DEPARTMENT", pageWidth / 2, 50, { align: "center" });
+  doc.setFontSize(11);
+  doc.text("Legapi City", pageWidth / 2, 66, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Under Five Clinic Record", pageWidth / 2, 88, { align: "center" });
+  doc.setFontSize(9);
+  doc.text("(Philhealth and Non-Philhealth)", pageWidth / 2, 102, { align: "center" });
 }
 
 function renderRecord(
@@ -131,7 +140,7 @@ function renderClinicRecord(
     },
   });
 
-  cursorY = ensureSpace(doc, getTableEndY(doc) + 22, 130, margin, pageHeight);
+  cursorY = ensureSpace(doc, getTableEndY(doc) + 22, 130, margin, pageHeight, pageWidth, contentStartY);
   addSectionTitle(doc, "Findings / Chief Complaint", pageWidth / 2, cursorY);
   autoTable(doc, {
     startY: cursorY + 8,
@@ -178,7 +187,7 @@ function renderCorrectedText(
   pageWidth: number,
   pageHeight: number,
 ) {
-  const cursorY = ensureSpace(doc, startY, 120, margin, pageHeight);
+  const cursorY = ensureSpace(doc, startY, 120, margin, pageHeight, pageWidth, contentStartY);
   addSectionTitle(doc, "Corrected OCR Text", pageWidth / 2, cursorY);
   autoTable(doc, {
     startY: cursorY + 8,
@@ -230,11 +239,14 @@ function ensureSpace(
   neededHeight: number,
   margin: number,
   pageHeight: number,
+  pageWidth: number,
+  contentStartY: number,
 ) {
   if (cursorY + neededHeight <= pageHeight - margin) {
     return cursorY;
   }
 
   doc.addPage();
-  return margin;
+  renderPdfHeader(doc, pageWidth);
+  return contentStartY;
 }
